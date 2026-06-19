@@ -173,13 +173,16 @@ class SoftwareSettingsPanel(QWidget):
         row.addWidget(lbl)
 
         self._output_dir = LineEdit()
-        self._output_dir.setReadOnly(True)
         self._output_dir.setPlaceholderText("留空则使用源文件所在目录")
         row.addWidget(self._output_dir, 1)
 
         btn = PushButton("浏览")
         btn.clicked.connect(self._on_browse_output)
         row.addWidget(btn)
+
+        src_btn = PushButton("源文件目录")
+        src_btn.clicked.connect(lambda: self._output_dir.setText(""))
+        row.addWidget(src_btn)
         return row
 
     def _make_line_row(self, label: str, default: str):

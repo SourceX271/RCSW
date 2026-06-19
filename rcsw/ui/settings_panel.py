@@ -222,12 +222,15 @@ class SettingsPanel(QWidget):
         row.addWidget(lbl)
 
         self._output_dir = LineEdit()
-        self._output_dir.setReadOnly(True)
         row.addWidget(self._output_dir, 1)
 
         btn = PushButton("浏览")
         btn.clicked.connect(self._on_browse_output)
         row.addWidget(btn)
+
+        src_btn = PushButton("源文件目录")
+        src_btn.clicked.connect(lambda: self._output_dir.setText(""))
+        row.addWidget(src_btn)
         return row
 
     def _make_suffix_row(self):
@@ -337,6 +340,10 @@ class SettingsPanel(QWidget):
                 self._update_tier_dots(tier)
         super().changeEvent(event)
 
+    def showEvent(self, event):
+        self.load()
+        super().showEvent(event)
+
     @property
     def dpi(self) -> int:
         if self._quality_slider and self._value_to_tier(self._quality_slider.value()) == 3:
@@ -404,24 +411,27 @@ class SettingsPanel(QWidget):
         if self._quality_slider:
             self._block_sync = True
             qv = c.get("qualitySliderValue")
-            if qv is None:
+            if qv is not None:
+                self._quality_slider.setValue(int(qv))
+            else:
                 t = self._default_quality_tier()
-                qv = self._tier_to_value(tier_from_dpi_q(t.dpi, t.jpeg))
-            self._quality_slider.setValue(int(qv))
+                self._quality_slider.setValue(self._tier_to_value(tier_from_dpi_q(t.dpi, t.jpeg)))
             self._block_sync = False
         if self._dpi_slider:
             self._block_sync = True
             dpi = c.get("dpi")
-            if dpi is None:
-                dpi = self._default_quality_tier().dpi
-            self._dpi_slider.setValue(int(dpi))
+            if dpi is not None:
+                self._dpi_slider.setValue(int(dpi))
+            else:
+                self._dpi_slider.setValue(self._default_quality_tier().dpi)
             self._block_sync = False
         if self._jpeg_slider:
             self._block_sync = True
             jpg = c.get("jpegQuality")
-            if jpg is None:
-                jpg = self._default_quality_tier().jpeg
-            self._jpeg_slider.setValue(int(jpg))
+            if jpg is not None:
+                self._jpeg_slider.setValue(int(jpg))
+            else:
+                self._jpeg_slider.setValue(self._default_quality_tier().jpeg)
             self._block_sync = False
         if self._wm_slider:
             val = c.get("maxWmSize")

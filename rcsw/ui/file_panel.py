@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import subprocess
+from datetime import datetime
 
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QColor, QPainter, QFont, QPalette
@@ -63,47 +65,59 @@ class _FileItemDelegate(QStyledItemDelegate):
         name = index.data(Qt.ItemDataRole.DisplayRole)
         pages = index.data(Qt.ItemDataRole.UserRole + 1)
         size_mb = index.data(Qt.ItemDataRole.UserRole + 2)
+        path = index.data(Qt.ItemDataRole.UserRole)
+        mtime = index.data(Qt.ItemDataRole.UserRole + 4)
+        ctime = index.data(Qt.ItemDataRole.UserRole + 5)
 
-        icon_r = r.adjusted(8, 6, -8, -6)
-        icon_x = icon_r.left()
-        icon_y = icon_r.top() + (icon_r.height() - 32) // 2
+        margin = 10
+        right_w = r.right() - margin
+        body = body_text_color()
+        meta = meta_text_color()
+        white = Qt.GlobalColor.white
 
-        if is_valid:
-            pdf_color = QColor("#E74C3C") if not is_selected else Qt.GlobalColor.white
-        else:
-            pdf_color = QColor("#777")
-        painter.setPen(pdf_color)
-        painter.setBrush(pdf_color)
-        painter.drawRoundedRect(icon_x, icon_y, 28, 34, 3, 3)
-
-        painter.setPen(Qt.GlobalColor.white if is_selected else QColor(body_text_color()))
-        font = QFont("Segoe UI", 7, QFont.Weight.Bold)
-        painter.setFont(font)
-        label = "PDF" if is_valid else "!"
-        painter.drawText(icon_x, icon_y + 12, 28, 20, Qt.AlignmentFlag.AlignCenter, label)
-
-        name_color = Qt.GlobalColor.white if is_selected else QColor(body_text_color())
+        # Row 1: filename (left) + pages/size (right)
+        name_color = white if is_selected else QColor(body)
         if not is_valid and not is_selected:
             name_color = QColor("#999")
         painter.setPen(name_color)
-        font = QFont("Segoe UI", 10, QFont.Weight.Medium)
-        painter.setFont(font)
-        name_x = icon_x + 40
-        name_w = r.right() - name_x - 8
-        name_elided = fm.elidedText(name, Qt.TextElideMode.ElideMiddle, name_w)
-        painter.drawText(name_x, r.top() + 6, name_w, 18, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name_elided)
+        name_font = QFont("Segoe UI", 10, QFont.Weight.Medium)
+        painter.setFont(name_font)
+        name_elided = fm.elidedText(name, Qt.TextElideMode.ElideMiddle, right_w - margin)
+        painter.drawText(margin, r.top() + 6, right_w - margin, 20,
+                         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name_elided)
 
-        meta_color = QColor("#AAA") if is_selected else QColor(meta_text_color())
-        if not is_valid and not is_selected:
-            meta_color = QColor("#E74C3C")
-        painter.setPen(meta_color)
-        font = QFont("Segoe UI", 9)
-        painter.setFont(font)
         if is_valid:
-            meta = f"{pages if pages else '?'} 页  |  {size_mb if size_mb else '?'} MB"
+            info_text = f"{pages if pages else '?'} 页  |  {size_mb if size_mb else '?'} MB"
         else:
-            meta = "无法读取此文件"
-        painter.drawText(name_x, r.top() + 24, name_w, 16, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, meta)
+            info_text = "无法读取此文件"
+        info_color = QColor("#AAA") if is_selected else QColor(meta)
+        if not is_valid and not is_selected:
+            info_color = QColor("#E74C3C")
+        painter.setPen(info_color)
+        info_font = QFont("Segoe UI", 9)
+        painter.setFont(info_font)
+        painter.drawText(margin, r.top() + 6, right_w - margin, 20,
+                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, info_text)
+
+        # Row 2: path (left, elided) + dates (right)
+        path_color = QColor("#AAA") if is_selected else QColor(meta)
+        painter.setPen(path_color)
+        path_font = QFont("Segoe UI", 8)
+        painter.setFont(path_font)
+        date_reserved = 320 if (ctime and mtime) else (180 if (ctime or mtime) else 0)
+        path_elided = fm.elidedText(path, Qt.TextElideMode.ElideMiddle,
+                                     right_w - margin - date_reserved)
+        painter.drawText(margin, r.top() + 28, right_w - margin, 16,
+                         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, path_elided)
+
+        if ctime or mtime:
+            date_text = "  |  ".join(filter(None, [
+                f"创建 {ctime}" if ctime else "",
+                f"修改 {mtime}" if mtime else "",
+            ]))
+            painter.drawText(margin, r.top() + 28, right_w - margin, 16,
+                             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                             date_text)
 
         painter.restore()
 
@@ -194,6 +208,7 @@ class FilePanel(QWidget):
         self._list.setStyleSheet(
             "QListWidget::item { padding: 0px; }"
         )
+        self._list.itemDoubleClicked.connect(self._on_open_file)
         pal = self._list.palette()
         pal.setColor(QPalette.ColorRole.Base, QColor(0, 0, 0, 0))
         self._list.setPalette(pal)
@@ -255,6 +270,14 @@ class FilePanel(QWidget):
         self._total_size = 0.0
         self._update_buttons()
         self._refresh_empty_state()
+
+    def _on_open_file(self, item: QListWidgetItem):
+        path = item.data(Qt.ItemDataRole.UserRole)
+        if path and os.path.isfile(path):
+            try:
+                subprocess.run(["start", "", path], shell=True, check=False)
+            except Exception:
+                pass
 
     def _on_remove(self):
         if self._processing:
@@ -367,13 +390,22 @@ class FilePanel(QWidget):
                 invalid_paths.append(os.path.basename(p))
                 _log.warning("Invalid PDF: %s", p)
             name = os.path.basename(p)
+            try:
+                st = os.stat(p)
+                mtime = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M")
+                ctime = datetime.fromtimestamp(st.st_ctime).strftime("%Y-%m-%d %H:%M")
+            except OSError:
+                mtime = ""
+                ctime = ""
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.DisplayRole, name)
             item.setData(Qt.ItemDataRole.UserRole, p)
             item.setData(Qt.ItemDataRole.UserRole + 1, pages)
             item.setData(Qt.ItemDataRole.UserRole + 2, f"{size_mb:.1f}")
             item.setData(Qt.ItemDataRole.UserRole + 3, valid)
-            item.setSizeHint(QSize(200, 52))
+            item.setData(Qt.ItemDataRole.UserRole + 4, mtime)
+            item.setData(Qt.ItemDataRole.UserRole + 5, ctime)
+            item.setSizeHint(QSize(200, 62))
             self._list.addItem(item)
             if valid:
                 self._total_pages += pages

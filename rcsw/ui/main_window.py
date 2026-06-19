@@ -12,6 +12,8 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
     FluentIcon as FIF,
+    isDarkTheme,
+    qconfig,
 )
 
 from .file_panel import FilePanel
@@ -47,6 +49,8 @@ class MainWindow(FluentWindow):
         self._connect_signals()
 
         self._apply_transparent_chain()
+        self._apply_separators()
+        qconfig.themeChangedFinished.connect(self._apply_separators)
 
     def _init_navigation(self):
         self.addSubInterface(
@@ -107,6 +111,19 @@ class MainWindow(FluentWindow):
                 vp = scroll.viewport()
                 vp.setAutoFillBackground(False)
                 vp.setPalette(pal)
+
+    def _apply_separators(self):
+        dark = isDarkTheme()
+        sep = "rgba(255,255,255,0.08)" if dark else "rgba(0,0,0,0.08)"
+
+        self.navigationInterface.setObjectName("navInterface")
+        self.navigationInterface.setStyleSheet(
+            f"#navInterface {{ border-right: 1px solid {sep}; }}"
+        )
+        self.titleBar.setObjectName("titleBar")
+        self.titleBar.setStyleSheet(
+            f"#titleBar {{ border-bottom: 1px solid {sep}; }}"
+        )
 
     def _connect_signals(self):
         self._file_panel.process_requested.connect(self._on_start_process)
