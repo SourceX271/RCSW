@@ -54,30 +54,35 @@ class MainWindow(FluentWindow):
             FIF.DOCUMENT,
             "文件",
             position=NavigationItemPosition.TOP,
+            isTransparent=True,
         )
         self.addSubInterface(
             self._settings_panel,
             FIF.PALETTE,
             "处理设置",
             position=NavigationItemPosition.TOP,
+            isTransparent=True,
         )
         self.addSubInterface(
             self._software_settings_panel,
             FIF.DEVELOPER_TOOLS,
             "软件设置",
             position=NavigationItemPosition.TOP,
+            isTransparent=True,
         )
         self.addSubInterface(
             self._help_panel,
             FIF.HELP,
             "帮助",
             position=NavigationItemPosition.BOTTOM,
+            isTransparent=True,
         )
         self.addSubInterface(
             self._about_panel,
             FIF.INFO,
             "关于",
             position=NavigationItemPosition.BOTTOM,
+            isTransparent=True,
         )
 
     def _apply_transparent_chain(self):

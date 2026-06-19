@@ -13,12 +13,11 @@ from qfluentwidgets import (
     StrongBodyLabel,
     BodyLabel,
     ScrollArea,
-    CardWidget,
     HyperlinkButton,
 )
 
 from .. import __version__
-from .style import BODY_TEXT_STYLE, PANEL_BG
+from .style import BODY_TEXT_STYLE, PANEL_BG, TransparentCard
 
 
 class AboutPanel(QWidget):
@@ -47,7 +46,7 @@ class AboutPanel(QWidget):
         root_layout.setContentsMargins(0, 8, 0, 0)
         root_layout.setSpacing(16)
 
-        header_card = CardWidget()
+        header_card = TransparentCard()
         hl = QVBoxLayout(header_card)
         hl.setContentsMargins(16, 20, 16, 20)
         hl.setSpacing(8)
@@ -78,7 +77,7 @@ class AboutPanel(QWidget):
 
         root_layout.addWidget(header_card)
 
-        info_card = CardWidget()
+        info_card = TransparentCard()
         il = QVBoxLayout(info_card)
         il.setContentsMargins(16, 12, 16, 16)
         il.setSpacing(6)
@@ -100,7 +99,7 @@ class AboutPanel(QWidget):
 
         root_layout.addWidget(info_card)
 
-        link_card = CardWidget()
+        link_card = TransparentCard()
         ll = QVBoxLayout(link_card)
         ll.setContentsMargins(16, 12, 16, 16)
         ll.setSpacing(6)
@@ -115,6 +114,7 @@ class AboutPanel(QWidget):
         root_layout.addStretch()
 
         scroll.setWidget(root)
+        scroll.enableTransparentBackground()
         layout.addWidget(scroll, 1)
 
     @staticmethod

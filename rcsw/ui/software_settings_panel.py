@@ -16,7 +16,6 @@ from qfluentwidgets import (
     LineEdit,
     PushButton,
     ScrollArea,
-    CardWidget,
     SpinBox,
     setTheme,
     Theme,
@@ -31,7 +30,7 @@ from ..core.models import (
 )
 from ..core.config import Config
 from .widget_helpers import make_combo_row, make_slider_row
-from .style import PANEL_BG
+from .style import PANEL_BG, TransparentCard
 
 
 class SoftwareSettingsPanel(QWidget):
@@ -75,7 +74,7 @@ class SoftwareSettingsPanel(QWidget):
         root_layout.setContentsMargins(0, 8, 0, 0)
         root_layout.setSpacing(16)
 
-        c1 = CardWidget()
+        c1 = TransparentCard()
         c1_layout = QVBoxLayout(c1)
         c1_layout.setContentsMargins(16, 12, 16, 16)
         c1_layout.setSpacing(14)
@@ -95,7 +94,7 @@ class SoftwareSettingsPanel(QWidget):
 
         root_layout.addWidget(c1)
 
-        c2 = CardWidget()
+        c2 = TransparentCard()
         c2_layout = QVBoxLayout(c2)
         c2_layout.setContentsMargins(16, 12, 16, 16)
         c2_layout.setSpacing(14)
@@ -127,7 +126,7 @@ class SoftwareSettingsPanel(QWidget):
 
         root_layout.addWidget(c2)
 
-        c3 = CardWidget()
+        c3 = TransparentCard()
         c3_layout = QVBoxLayout(c3)
         c3_layout.setContentsMargins(16, 12, 16, 16)
         c3_layout.setSpacing(14)
@@ -148,6 +147,7 @@ class SoftwareSettingsPanel(QWidget):
         root_layout.addStretch()
 
         scroll.setWidget(root)
+        scroll.enableTransparentBackground()
         layout.addWidget(scroll, 1)
 
     def _make_quality_row(self):

@@ -10,10 +10,9 @@ from qfluentwidgets import (
     StrongBodyLabel,
     BodyLabel,
     ScrollArea,
-    CardWidget,
 )
 
-from .style import BODY_TEXT_STYLE, PANEL_BG
+from .style import BODY_TEXT_STYLE, PANEL_BG, TransparentCard
 
 _HELP_CONTENT = [
     ("快速上手", [
@@ -77,7 +76,7 @@ class HelpPanel(QWidget):
         root_layout.setSpacing(16)
 
         for section_title, lines in _HELP_CONTENT:
-            card = CardWidget()
+            card = TransparentCard()
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(16, 12, 16, 16)
             card_layout.setSpacing(8)
@@ -97,6 +96,7 @@ class HelpPanel(QWidget):
         root_layout.addStretch()
 
         scroll.setWidget(root)
+        scroll.enableTransparentBackground()
         layout.addWidget(scroll, 1)
 
 

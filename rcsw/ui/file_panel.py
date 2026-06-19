@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QColor, QPainter, QFont
+from PySide6.QtGui import QColor, QPainter, QFont, QPalette
 from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
@@ -27,7 +27,7 @@ from qfluentwidgets import (
 
 import fitz
 from ..core.logger import get_logger
-from .style import ACCENT, PANEL_BG
+from .style import ACCENT, ACCENT_TRANSLUCENT, PANEL_BG, body_text_color, meta_text_color, empty_label_style
 
 _log = get_logger("file_panel")
 
@@ -46,7 +46,7 @@ class _FileItemDelegate(QStyledItemDelegate):
 
         r = option.rect
         if is_selected:
-            painter.fillRect(r, QColor(ACCENT))
+            painter.fillRect(r, ACCENT_TRANSLUCENT)
         elif is_hovered:
             painter.fillRect(r, QColor("#00000014"))
         elif index.row() % 2 == 0:
@@ -76,13 +76,13 @@ class _FileItemDelegate(QStyledItemDelegate):
         painter.setBrush(pdf_color)
         painter.drawRoundedRect(icon_x, icon_y, 28, 34, 3, 3)
 
-        painter.setPen(Qt.GlobalColor.white if is_selected else Qt.GlobalColor.black)
+        painter.setPen(Qt.GlobalColor.white if is_selected else QColor(body_text_color()))
         font = QFont("Segoe UI", 7, QFont.Weight.Bold)
         painter.setFont(font)
         label = "PDF" if is_valid else "!"
         painter.drawText(icon_x, icon_y + 12, 28, 20, Qt.AlignmentFlag.AlignCenter, label)
 
-        name_color = Qt.GlobalColor.white if is_selected else QColor("#1A1A1A")
+        name_color = Qt.GlobalColor.white if is_selected else QColor(body_text_color())
         if not is_valid and not is_selected:
             name_color = QColor("#999")
         painter.setPen(name_color)
@@ -93,7 +93,7 @@ class _FileItemDelegate(QStyledItemDelegate):
         name_elided = fm.elidedText(name, Qt.TextElideMode.ElideMiddle, name_w)
         painter.drawText(name_x, r.top() + 6, name_w, 18, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name_elided)
 
-        meta_color = QColor("#AAA") if is_selected else QColor("#888")
+        meta_color = QColor("#AAA") if is_selected else QColor(meta_text_color())
         if not is_valid and not is_selected:
             meta_color = QColor("#E74C3C")
         painter.setPen(meta_color)
@@ -185,14 +185,7 @@ class FilePanel(QWidget):
         self._empty_label.setContentsMargins(32, 48, 32, 48)
         self._empty_label.setVisible(True)
         self._empty_label.setMinimumHeight(160)
-        self._empty_label.setStyleSheet(
-            "color: #888888;"
-            "font-size: 15px;"
-            "padding: 32px;"
-            f"border: 2px dashed {ACCENT}44;"
-            "border-radius: 8px;"
-            "background: rgba(0,0,0,0.02);"
-        )
+        self._empty_label.setStyleSheet(empty_label_style())
 
         self._list = QListWidget()
         self._list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
@@ -201,6 +194,11 @@ class FilePanel(QWidget):
         self._list.setStyleSheet(
             "QListWidget::item { padding: 0px; }"
         )
+        pal = self._list.palette()
+        pal.setColor(QPalette.ColorRole.Base, QColor(0, 0, 0, 0))
+        self._list.setPalette(pal)
+        self._list.setAutoFillBackground(False)
+        self._list.viewport().setAutoFillBackground(False)
 
         scroll_container = QWidget()
         scroll_container.setAutoFillBackground(False)
@@ -211,6 +209,7 @@ class FilePanel(QWidget):
 
         self._scroll.setWidget(scroll_container)
         self._scroll.setWidgetResizable(True)
+        self._scroll.enableTransparentBackground()
         layout.addWidget(self._scroll, 1)
 
         bottom_bar = QHBoxLayout()
@@ -404,6 +403,8 @@ class FilePanel(QWidget):
     def changeEvent(self, event):
         if event.type() == event.Type.StyleChange and hasattr(self, '_list'):
             self._list.viewport().update()
+            if hasattr(self, '_empty_label'):
+                self._empty_label.setStyleSheet(empty_label_style())
         super().changeEvent(event)
 
     def dragEnterEvent(self, event):

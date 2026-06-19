@@ -18,7 +18,6 @@ from qfluentwidgets import (
     ScrollArea,
     SegmentedWidget,
     StrongBodyLabel,
-    CardWidget,
 )
 
 from ..core.models import (
@@ -32,7 +31,7 @@ from ..core.models import (
 )
 from ..core.config import Config
 from .widget_helpers import make_combo_row, make_slider_row
-from .style import ACCENT, HINT_COLOR, DOT_INACTIVE_COLOR, TIER_LABEL_STYLE, PANEL_BG
+from .style import ACCENT, hint_color, dot_inactive_color, TIER_LABEL_STYLE, PANEL_BG, TransparentCard
 
 
 class SettingsPanel(QWidget):
@@ -86,7 +85,7 @@ class SettingsPanel(QWidget):
         root_layout.setContentsMargins(0, 8, 0, 0)
         root_layout.setSpacing(12)
 
-        base_card = CardWidget()
+        base_card = TransparentCard()
         base_card.setObjectName("baseCard")
         base_layout = QVBoxLayout(base_card)
         base_layout.setContentsMargins(16, 12, 16, 16)
@@ -102,7 +101,7 @@ class SettingsPanel(QWidget):
 
         root_layout.addWidget(base_card)
 
-        self._adv_card = CardWidget()
+        self._adv_card = TransparentCard()
         self._adv_card.setObjectName("advCard")
         adv_layout = QVBoxLayout(self._adv_card)
         adv_layout.setContentsMargins(16, 12, 16, 16)
@@ -138,6 +137,7 @@ class SettingsPanel(QWidget):
         root_layout.addStretch()
 
         scroll.setWidget(root)
+        scroll.enableTransparentBackground()
         layout.addWidget(scroll, 1)
 
         self._mode_switcher.blockSignals(True)
@@ -256,7 +256,7 @@ class SettingsPanel(QWidget):
                     f"color: {ACCENT}; {TIER_LABEL_STYLE} font-weight: bold;"
                 )
             else:
-                lbl.setStyleSheet(f"color: {HINT_COLOR}; {TIER_LABEL_STYLE}")
+                lbl.setStyleSheet(f"color: {hint_color()}; {TIER_LABEL_STYLE}")
 
     def _update_tier_dots(self, active: int):
         for i, dot in enumerate(self._tier_dots):
@@ -266,7 +266,7 @@ class SettingsPanel(QWidget):
                 )
             else:
                 dot.setStyleSheet(
-                    f"border-radius: 5px; background-color: {DOT_INACTIVE_COLOR};"
+                    f"border-radius: 5px; background-color: {dot_inactive_color()};"
                 )
 
     def _on_quality_slider_changed(self, value: int):
@@ -327,6 +327,15 @@ class SettingsPanel(QWidget):
                 self._quality_slider.setValue(self._tier_to_value(tier))
                 return True
         return super().eventFilter(watched, event)
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.Type.StyleChange:
+            if hasattr(self, '_tier_labels') and self._tier_labels:
+                qv = self._quality_slider.value() if self._quality_slider else 112
+                tier = self._value_to_tier(qv)
+                self._update_tier_labels(tier)
+                self._update_tier_dots(tier)
+        super().changeEvent(event)
 
     @property
     def dpi(self) -> int:
