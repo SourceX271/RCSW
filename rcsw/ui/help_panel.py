@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
@@ -12,7 +13,7 @@ from qfluentwidgets import (
     ScrollArea,
 )
 
-from .style import BODY_TEXT_STYLE, PANEL_BG, TransparentCard
+from .style import PANEL_BG, TransparentCard
 
 _HELP_CONTENT = [
     ("快速上手", [
@@ -88,7 +89,9 @@ class HelpPanel(QWidget):
             for line in lines:
                 lbl = BodyLabel(line)
                 lbl.setWordWrap(True)
-                lbl.setStyleSheet(BODY_TEXT_STYLE)
+                font = lbl.font()
+                font.setPointSize(10)
+                lbl.setFont(font)
                 card_layout.addWidget(lbl)
 
             root_layout.addWidget(card)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QFont
 from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
@@ -17,7 +17,7 @@ from qfluentwidgets import (
 )
 
 from .. import __version__
-from .style import BODY_TEXT_STYLE, PANEL_BG, TransparentCard
+from .style import PANEL_BG, TransparentCard
 
 
 class AboutPanel(QWidget):
@@ -121,5 +121,7 @@ class AboutPanel(QWidget):
     def _text(content: str) -> BodyLabel:
         lbl = BodyLabel(content)
         lbl.setWordWrap(True)
-        lbl.setStyleSheet(BODY_TEXT_STYLE)
+        font = lbl.font()
+        font.setPointSize(10)
+        lbl.setFont(font)
         return lbl
