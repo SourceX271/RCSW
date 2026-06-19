@@ -21,31 +21,18 @@ from qfluentwidgets import (
     CardWidget,
 )
 
-from ..core.detector import (
+from ..core.models import (
     ScaleMode,
     SCALE_MODE_LABELS,
     WatermarkMode,
     WM_MODE_LABELS,
     QualityTier,
     QUALITY_TIERS,
+    tier_from_dpi_q,
 )
 from ..core.config import Config
 from .widget_helpers import make_combo_row, make_slider_row
-from .style import ACCENT, ACCENT_DIM, HINT_COLOR, DOT_INACTIVE_COLOR, TIER_LABEL_STYLE, PANEL_BG
-
-def _tier_from_dpi_q(dpi: int, quality: int) -> int:
-    if dpi == 0:
-        return 3
-    best = 1
-    best_dist = 9999
-    for i, t in enumerate(QUALITY_TIERS):
-        if t.dpi == 0:
-            continue
-        dist = abs(dpi - t.dpi) + abs(quality - t.jpeg) * 2
-        if dist < best_dist:
-            best_dist = dist
-            best = i
-    return best
+from .style import ACCENT, HINT_COLOR, DOT_INACTIVE_COLOR, TIER_LABEL_STYLE, PANEL_BG
 
 
 class SettingsPanel(QWidget):
@@ -164,7 +151,7 @@ class SettingsPanel(QWidget):
 
         if mode == "basic":
             self._block_sync = True
-            tier = _tier_from_dpi_q(self.dpi, self.jpeg_quality)
+            tier = tier_from_dpi_q(self.dpi, self.jpeg_quality)
             self._last_quality_tier = tier
             self._quality_slider.setValue(self._tier_to_value(tier))
             self._block_sync = False
@@ -321,7 +308,7 @@ class SettingsPanel(QWidget):
         if self._block_sync:
             return
         self._block_sync = True
-        tier = _tier_from_dpi_q(self.dpi, self.jpeg_quality)
+        tier = tier_from_dpi_q(self.dpi, self.jpeg_quality)
         self._last_quality_tier = tier
         self._quality_slider.setValue(self._tier_to_value(tier))
         self._update_tier_labels(tier)
@@ -379,7 +366,7 @@ class SettingsPanel(QWidget):
     def output_suffix(self) -> str:
         return self._output_suffix.text() if self._output_suffix else "_RCSW"
 
-    def save(self):
+    def save_to_config(self):
         c = self._cfg
         c.set("scaleMode", self.scale_mode.value)
         qv = self._quality_slider.value() if self._quality_slider else 112
@@ -390,7 +377,11 @@ class SettingsPanel(QWidget):
         c.set("wmMode", self.wm_mode.value)
         c.set("outputDir", self.output_dir)
         c.set("outputSuffix", self.output_suffix)
-        c.save()
+
+    def _default_quality_tier(self) -> QualityTier:
+        ci = self._cfg.get("defaultQualityIndex", 1)
+        idx = max(0, min(int(ci), len(QUALITY_TIERS) - 1))
+        return QUALITY_TIERS[idx]
 
     def load(self):
         c = self._cfg
@@ -405,25 +396,22 @@ class SettingsPanel(QWidget):
             self._block_sync = True
             qv = c.get("qualitySliderValue")
             if qv is None:
-                default_idx = int(c.get("defaultQualityIndex", 1))
-                t = QUALITY_TIERS[min(default_idx, len(QUALITY_TIERS) - 1)]
-                qv = self._tier_to_value(_tier_from_dpi_q(t.dpi, t.jpeg))
+                t = self._default_quality_tier()
+                qv = self._tier_to_value(tier_from_dpi_q(t.dpi, t.jpeg))
             self._quality_slider.setValue(int(qv))
             self._block_sync = False
         if self._dpi_slider:
             self._block_sync = True
             dpi = c.get("dpi")
             if dpi is None:
-                default_idx = int(c.get("defaultQualityIndex", 1))
-                dpi = QUALITY_TIERS[min(default_idx, len(QUALITY_TIERS) - 1)].dpi
+                dpi = self._default_quality_tier().dpi
             self._dpi_slider.setValue(int(dpi))
             self._block_sync = False
         if self._jpeg_slider:
             self._block_sync = True
             jpg = c.get("jpegQuality")
             if jpg is None:
-                default_idx = int(c.get("defaultQualityIndex", 1))
-                jpg = QUALITY_TIERS[min(default_idx, len(QUALITY_TIERS) - 1)].jpeg
+                jpg = self._default_quality_tier().jpeg
             self._jpeg_slider.setValue(int(jpg))
             self._block_sync = False
         if self._wm_slider:

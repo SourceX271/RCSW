@@ -122,6 +122,8 @@ class FilePanel(QWidget):
         self.setAcceptDrops(True)
         self._file_paths: dict[str, str] = {}
         self._processing = False
+        self._total_pages = 0
+        self._total_size = 0.0
         self._setup_ui()
 
     def _setup_ui(self):
@@ -129,9 +131,10 @@ class FilePanel(QWidget):
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(12)
 
-        self.setStyleSheet(
-            PANEL_BG
-            + f'QWidget#filePanel[dragActive="true"] #fileListScroll {{'
+        self.setStyleSheet(PANEL_BG)
+
+        self._drag_border_style = (
+            f"QScrollArea#fileListScroll {{"
             f"  border: 2px dashed {ACCENT};"
             "  border-radius: 6px;"
             "}"
@@ -177,8 +180,9 @@ class FilePanel(QWidget):
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_label.setWordWrap(True)
         self._empty_label.setText(
-            '\n\n拖拽 PDF 文件到此处\n或点击上方按钮添加文件'
+            '拖拽 PDF 文件到此处\n或点击上方按钮添加文件'
         )
+        self._empty_label.setContentsMargins(32, 48, 32, 48)
         self._empty_label.setVisible(True)
         self._empty_label.setMinimumHeight(160)
         self._empty_label.setStyleSheet(
@@ -248,6 +252,8 @@ class FilePanel(QWidget):
             return
         self._file_paths.clear()
         self._list.clear()
+        self._total_pages = 0
+        self._total_size = 0.0
         self._update_buttons()
         self._refresh_empty_state()
 
@@ -261,6 +267,15 @@ class FilePanel(QWidget):
         fp = item.data(Qt.ItemDataRole.UserRole)
         if fp in self._file_paths:
             del self._file_paths[fp]
+        pages_val = item.data(Qt.ItemDataRole.UserRole + 1)
+        size_val = item.data(Qt.ItemDataRole.UserRole + 2)
+        if pages_val and isinstance(pages_val, int):
+            self._total_pages -= pages_val
+        if size_val:
+            try:
+                self._total_size -= float(size_val)
+            except (ValueError, TypeError):
+                pass
         self._update_buttons()
         self._refresh_empty_state()
 
@@ -299,20 +314,9 @@ class FilePanel(QWidget):
     def _update_count_label(self):
         n = self._list.count()
         if n > 0:
-            total_pages = 0
-            total_size = 0.0
-            for i in range(n):
-                item = self._list.item(i)
-                pages_val = item.data(Qt.ItemDataRole.UserRole + 1)
-                size_val = item.data(Qt.ItemDataRole.UserRole + 2)
-                if pages_val and isinstance(pages_val, int):
-                    total_pages += pages_val
-                if size_val:
-                    try:
-                        total_size += float(size_val)
-                    except (ValueError, TypeError):
-                        pass
-            self._count_label.setText(f"共 {n} 个文件  |  {total_pages} 页  |  {total_size:.1f} MB")
+            self._count_label.setText(
+                f"共 {n} 个文件  |  {self._total_pages} 页  |  {self._total_size:.1f} MB"
+            )
         else:
             self._count_label.setText("")
 
@@ -372,6 +376,9 @@ class FilePanel(QWidget):
             item.setData(Qt.ItemDataRole.UserRole + 3, valid)
             item.setSizeHint(QSize(200, 52))
             self._list.addItem(item)
+            if valid:
+                self._total_pages += pages
+                self._total_size += size_mb
 
         self._update_buttons()
         self._refresh_empty_state()
@@ -402,19 +409,13 @@ class FilePanel(QWidget):
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
-            self.setProperty("dragActive", True)
-            self.style().unpolish(self)
-            self.style().polish(self)
+            self._scroll.setStyleSheet(self._drag_border_style)
 
     def dragLeaveEvent(self, event):
-        self.setProperty("dragActive", False)
-        self.style().unpolish(self)
-        self.style().polish(self)
+        self._scroll.setStyleSheet("")
 
     def dropEvent(self, event):
-        self.setProperty("dragActive", False)
-        self.style().unpolish(self)
-        self.style().polish(self)
+        self._scroll.setStyleSheet("")
         paths = [
             url.toLocalFile()
             for url in event.mimeData().urls()

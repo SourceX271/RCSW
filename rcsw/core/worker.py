@@ -4,7 +4,8 @@ import os
 
 from PySide6.QtCore import QThread, Signal
 
-from .detector import ScaleMode, WatermarkMode, detect_watermarks
+from .models import ScaleMode, WatermarkMode
+from .detector import detect_watermarks
 from .processor import process_page
 from .logger import get_logger
 
@@ -77,9 +78,12 @@ class ProcessingWorker(QThread):
             if doc is None:
                 continue
 
+            pages_before_file = global_idx
+
             try:
                 wm_indices_list = detect_watermarks(
-                    doc, self._max_wm_size, self._wm_mode
+                    doc, self._max_wm_size, self._wm_mode,
+                    cancel_fn=self.isInterruptionRequested,
                 )
 
                 new_doc = fitz.open()
@@ -133,7 +137,8 @@ class ProcessingWorker(QThread):
 
             except Exception as e:
                 error_files.append((fp, str(e)))
-                global_idx += page_counts[fi]
+                remaining = page_counts[fi] - (global_idx - pages_before_file)
+                global_idx += max(0, remaining)
                 _log.error("Error processing %s: %s", os.path.basename(fp), e)
 
         for doc in docs:

@@ -5,7 +5,7 @@ import io
 import fitz
 from PIL import Image
 
-from .detector import ScaleMode
+from .models import ScaleMode
 
 
 def scale_image(

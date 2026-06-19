@@ -22,12 +22,11 @@ from qfluentwidgets import (
     Theme,
 )
 
-from ..core.detector import (
+from ..core.models import (
     ScaleMode,
     SCALE_MODE_LABELS,
     WatermarkMode,
     WM_MODE_LABELS,
-    QualityTier,
     QUALITY_TIERS,
 )
 from ..core.config import Config
@@ -261,7 +260,7 @@ class SoftwareSettingsPanel(QWidget):
         self._overwrite_cb.stateChanged.connect(lambda v: c.set("overwriteExisting", bool(v)))
         self._open_folder_cb.stateChanged.connect(lambda v: c.set("openFolderAfter", bool(v)))
 
-    def save(self):
+    def save_to_config(self):
         c = self._cfg
         theme = self._theme_combo.currentData()
         c.set("theme", theme.value if isinstance(theme, Theme) else Theme.LIGHT.value)
@@ -273,7 +272,6 @@ class SoftwareSettingsPanel(QWidget):
         c.set("defaultOutputSuffix", self.output_suffix)
         c.set("overwriteExisting", self.overwrite_existing)
         c.set("openFolderAfter", self.open_folder_after)
-        c.save()
 
     def load(self):
         c = self._cfg

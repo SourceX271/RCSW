@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
@@ -49,10 +52,14 @@ class AboutPanel(QWidget):
         hl.setContentsMargins(16, 20, 16, 20)
         hl.setSpacing(8)
 
-        icon_lbl = QLabel("\U0001F4C4")
+        icon_lbl = QLabel()
         icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_lbl.setStyleSheet("font-size: 48px;")
-        hl.addWidget(icon_lbl)
+        icon_lbl.setFixedSize(64, 64)
+        icon_lbl.setScaledContents(True)
+        icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.svg"
+        if icon_path.exists():
+            icon_lbl.setPixmap(QPixmap(str(icon_path)))
+        hl.addWidget(icon_lbl, 0, Qt.AlignmentFlag.AlignCenter)
 
         name_lbl = StrongBodyLabel("RCSW")
         name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)

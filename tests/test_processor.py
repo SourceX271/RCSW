@@ -5,7 +5,7 @@ import io
 import pytest
 from PIL import Image
 from rcsw.core.processor import scale_image, to_rgb, process_page
-from rcsw.core.detector import ScaleMode
+from rcsw.core.models import ScaleMode
 
 
 class TestToRgb:

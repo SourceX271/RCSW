@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import pytest
 from rcsw.core.detector import (
-    ScaleMode,
-    WatermarkMode,
     _filter_by_size,
     _match_position,
+)
+from rcsw.core.models import (
+    ScaleMode,
+    WatermarkMode,
 )
 
 import fitz
@@ -86,7 +88,7 @@ class TestScaleModeEnum:
         assert ScaleMode.FIT_HEIGHT in modes
 
     def test_scale_mode_labels_cover_all(self):
-        from rcsw.core.detector import SCALE_MODE_LABELS
+        from rcsw.core.models import SCALE_MODE_LABELS
         for mode in ScaleMode:
             assert mode in SCALE_MODE_LABELS
 
@@ -97,28 +99,28 @@ class TestWatermarkModeEnum:
         assert len(modes) == 6
 
     def test_wm_mode_labels_cover_all(self):
-        from rcsw.core.detector import WM_MODE_LABELS
+        from rcsw.core.models import WM_MODE_LABELS
         for mode in WatermarkMode:
             assert mode in WM_MODE_LABELS
 
 
 class TestTierFromDpiQ:
     def test_dpi_zero_maps_to_original(self):
-        from rcsw.ui.settings_panel import _tier_from_dpi_q
-        assert _tier_from_dpi_q(0, 100) == 3
+        from rcsw.core.models import tier_from_dpi_q
+        assert tier_from_dpi_q(0, 100) == 3
 
     def test_high_quality_params(self):
-        from rcsw.ui.settings_panel import _tier_from_dpi_q
-        assert _tier_from_dpi_q(300, 95) == 2
+        from rcsw.core.models import tier_from_dpi_q
+        assert tier_from_dpi_q(300, 95) == 2
 
     def test_medium_quality_params(self):
-        from rcsw.ui.settings_panel import _tier_from_dpi_q
-        assert _tier_from_dpi_q(200, 90) == 1
+        from rcsw.core.models import tier_from_dpi_q
+        assert tier_from_dpi_q(200, 90) == 1
 
     def test_low_quality_params(self):
-        from rcsw.ui.settings_panel import _tier_from_dpi_q
-        assert _tier_from_dpi_q(150, 75) == 0
+        from rcsw.core.models import tier_from_dpi_q
+        assert tier_from_dpi_q(150, 75) == 0
 
     def test_custom_params_find_closest(self):
-        from rcsw.ui.settings_panel import _tier_from_dpi_q
-        assert _tier_from_dpi_q(220, 92) == 1
+        from rcsw.core.models import tier_from_dpi_q
+        assert tier_from_dpi_q(220, 92) == 1

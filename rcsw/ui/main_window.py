@@ -21,6 +21,7 @@ from .help_panel import HelpPanel
 from .about_panel import AboutPanel
 from ..core.worker import ProcessingWorker
 from ..core.logger import get_logger
+from ..core.config import Config
 
 _log = get_logger("main_window")
 
@@ -197,10 +198,13 @@ class MainWindow(FluentWindow):
             _log.info("Waiting for worker thread to finish...")
             self._file_panel.update_status("正在停止处理任务...")
             self._worker.requestInterruption()
-            self._worker.quit()
             if not self._worker.wait(15000):
                 _log.warning("Worker thread did not finish in time, terminating")
                 self._worker.terminate()
-        self._settings_panel.save()
-        self._software_settings_panel.save()
+        self._save_all_settings()
         super().closeEvent(event)
+
+    def _save_all_settings(self):
+        self._settings_panel.save_to_config()
+        self._software_settings_panel.save_to_config()
+        Config.instance().save()

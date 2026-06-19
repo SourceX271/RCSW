@@ -1,18 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="400" height="400">
   <defs>
-    <linearGradient id="bg" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0%" stop-color="#0090FF"/>
-      <stop offset="100%" stop-color="#0055CC"/>
+    <!-- 银色渐变 -->
+    <linearGradient id="silver" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8f9fa" />
+      <stop offset="30%" stop-color="#ced4da" />
+      <stop offset="70%" stop-color="#6c757d" />
+      <stop offset="100%" stop-color="#343a40" />
     </linearGradient>
+
+    <!-- 深灰色渐变 -->
+    <linearGradient id="darkGray" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#495057" />
+      <stop offset="50%" stop-color="#212529" />
+      <stop offset="100%" stop-color="#0a0c0d" />
+    </linearGradient>
+
+    <!-- 外阴影效果，增加立体科技感 -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
   </defs>
-  <rect width="256" height="256" rx="48" fill="url(#bg)"/>
-  <rect x="72" y="44" width="112" height="148" rx="10" fill="#FFFFFF" opacity="0.95"/>
-  <rect x="90" y="66" width="76" height="10" rx="4" fill="#D0D8E0"/>
-  <rect x="90" y="90" width="60" height="8" rx="4" fill="#D0D8E0"/>
-  <rect x="90" y="110" width="68" height="8" rx="4" fill="#D0D8E0"/>
-  <rect x="90" y="130" width="52" height="8" rx="4" fill="#D0D8E0"/>
-  <g transform="translate(146, 108)">
-    <circle cx="0" cy="0" r="24" fill="#0090FF"/>
-    <path d="M-10,-2 l4,8 l12,-10" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- 背景圆角矩形（边缘渐变银色，中间渐变深灰色带网格） -->
+  <rect x="10" y="10" width="180" height="180" rx="32" ry="32" fill="url(#darkGray)" stroke="url(#silver)" stroke-width="4" filter="url(#shadow)" />
+  
+
+
+  <!-- 中空的斜向水滴（中心图标） -->
+  <g transform="rotate(45, 100, 100)">
+    <!-- 水滴外部描边（渐变银色） -->
+    <path d="M 100,45 
+             C 78,45 60,65 60,92 
+             C 60,118 82,152 100,168 
+             C 118,152 140,118 140,92 
+             C 140,65 122,45 100,45 Z" 
+          fill="none" 
+          stroke="url(#silver)" 
+          stroke-width="12" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
   </g>
 </svg>

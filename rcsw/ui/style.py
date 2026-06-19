@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 ACCENT = "#0078D4"
-ACCENT_DIM = "#60CDFF"
 
 BODY_TEXT_STYLE = "font-size: 13px; line-height: 1.6;"
 HINT_COLOR = "#888888"
