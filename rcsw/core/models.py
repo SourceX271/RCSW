@@ -14,8 +14,8 @@ class QualityTier:
 
 QUALITY_TIERS: list[QualityTier] = [
     QualityTier("低质量", 150, 75, "文件最小"),
-    QualityTier("中等质量", 200, 90, "推荐"),
-    QualityTier("高质量", 300, 95),
+    QualityTier("中等质量", 200, 90, "文件中等"),
+    QualityTier("高质量", 300, 95, "文件较大"),
     QualityTier("原图", 0, 100, "文件最大"),
 ]
 

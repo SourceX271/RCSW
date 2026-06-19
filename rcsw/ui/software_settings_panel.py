@@ -45,6 +45,7 @@ class SoftwareSettingsPanel(QWidget):
     _suffix_edit: LineEdit
     _overwrite_cb: CheckBox
     _open_folder_cb: CheckBox
+    _minimize_tray_cb: CheckBox
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -91,6 +92,9 @@ class SoftwareSettingsPanel(QWidget):
         self._theme_combo.addItem("跟随系统", userData=Theme.AUTO)
         theme_row.addWidget(self._theme_combo, 1)
         c1_layout.addLayout(theme_row)
+
+        self._minimize_tray_cb = CheckBox("关闭窗口时最小化到系统托盘")
+        c1_layout.addWidget(self._minimize_tray_cb)
 
         root_layout.addWidget(c1)
 
@@ -161,7 +165,7 @@ class SoftwareSettingsPanel(QWidget):
         for t in QUALITY_TIERS:
             display = f"{t.name} — {t.hint}" if t.hint else f"{t.name} (DPI={t.dpi}, 质量={t.jpeg})"
             combo.addItem(display, userData=(t.dpi, t.jpeg))
-        combo.setCurrentIndex(1)
+        combo.setCurrentIndex(3)
         row.addWidget(combo, 1)
         return row, combo
 
@@ -251,6 +255,10 @@ class SoftwareSettingsPanel(QWidget):
     def open_folder_after(self) -> bool:
         return self._open_folder_cb.isChecked()
 
+    @property
+    def minimize_to_tray(self) -> bool:
+        return self._minimize_tray_cb.isChecked()
+
     def _connect_signals(self):
         c = self._cfg
         self._theme_combo.currentIndexChanged.connect(self._on_theme_changed)
@@ -262,6 +270,7 @@ class SoftwareSettingsPanel(QWidget):
         self._suffix_edit.textChanged.connect(lambda t: c.set("defaultOutputSuffix", t))
         self._overwrite_cb.stateChanged.connect(lambda v: c.set("overwriteExisting", bool(v)))
         self._open_folder_cb.stateChanged.connect(lambda v: c.set("openFolderAfter", bool(v)))
+        self._minimize_tray_cb.stateChanged.connect(lambda v: c.set("minimizeToTray", bool(v)))
 
     def save_to_config(self):
         c = self._cfg
@@ -275,6 +284,7 @@ class SoftwareSettingsPanel(QWidget):
         c.set("defaultOutputSuffix", self.output_suffix)
         c.set("overwriteExisting", self.overwrite_existing)
         c.set("openFolderAfter", self.open_folder_after)
+        c.set("minimizeToTray", self.minimize_to_tray)
 
     def load(self):
         c = self._cfg
@@ -292,7 +302,7 @@ class SoftwareSettingsPanel(QWidget):
                 self._scale_combo.setCurrentIndex(i)
                 break
 
-        idx = int(c.get("defaultQualityIndex", 1))
+        idx = int(c.get("defaultQualityIndex", 3))
         self._quality_combo.setCurrentIndex(max(0, min(idx, self._quality_combo.count() - 1)))
 
         mode = c.get("defaultWmMode", WatermarkMode.AUTO.value)
@@ -307,3 +317,4 @@ class SoftwareSettingsPanel(QWidget):
         self._suffix_edit.setText(c.get("defaultOutputSuffix", "_RCSW"))
         self._overwrite_cb.setChecked(bool(c.get("overwriteExisting", False)))
         self._open_folder_cb.setChecked(bool(c.get("openFolderAfter", False)))
+        self._minimize_tray_cb.setChecked(bool(c.get("minimizeToTray", False)))

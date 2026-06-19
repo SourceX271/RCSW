@@ -97,6 +97,16 @@ class AboutPanel(QWidget):
         il.addWidget(StrongBodyLabel("许可证"))
         il.addWidget(self._text("GNU General Public License v3.0"))
 
+        il.addWidget(StrongBodyLabel("作者"))
+        il.addWidget(HyperlinkButton(
+            "mailto:860256006@qq.com",
+            "860256006@qq.com",
+        ))
+        il.addWidget(HyperlinkButton(
+            "mailto:liyichen314@outlook.com",
+            "liyichen314@outlook.com",
+        ))
+
         root_layout.addWidget(info_card)
 
         link_card = TransparentCard()
@@ -106,7 +116,7 @@ class AboutPanel(QWidget):
         ll.addWidget(StrongBodyLabel("项目地址"))
         gh_link = HyperlinkButton(
             "https://github.com/SourceX271/RCSW",
-            "github.com/SourceX271/RCSW",
+            "https://github.com/SourceX271/RCSW",
         )
         ll.addWidget(gh_link)
         root_layout.addWidget(link_card)

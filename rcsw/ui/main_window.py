@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import os
 import subprocess
+from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPalette, QColor
+from PySide6.QtGui import QPalette, QColor, QIcon
+from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 
 from qfluentwidgets import (
     FluentWindow,
@@ -47,6 +49,7 @@ class MainWindow(FluentWindow):
 
         self._init_navigation()
         self._connect_signals()
+        self._setup_tray()
 
         self._apply_transparent_chain()
         self._apply_separators()
@@ -128,6 +131,40 @@ class MainWindow(FluentWindow):
     def _connect_signals(self):
         self._file_panel.process_requested.connect(self._on_start_process)
         self._file_panel.cancel_requested.connect(self._on_cancel)
+
+    def _setup_tray(self):
+        icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.png"
+        if not icon_path.exists():
+            return
+
+        self._tray = QSystemTrayIcon(self)
+        self._tray.setIcon(QIcon(str(icon_path)))
+        self._tray.setToolTip("RCSW - Remove CamScanner Watermark")
+
+        menu = QMenu()
+        show_action = menu.addAction("显示")
+        show_action.triggered.connect(self._show_from_tray)
+        menu.addSeparator()
+        quit_action = menu.addAction("退出")
+        quit_action.triggered.connect(self._quit_from_tray)
+
+        self._tray.setContextMenu(menu)
+        self._tray.activated.connect(self._on_tray_activated)
+        self._tray.show()
+
+    def _on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self._show_from_tray()
+
+    def _show_from_tray(self):
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def _quit_from_tray(self):
+        self._tray.hide()
+        self._save_all_settings()
+        QApplication.quit()
 
     def _on_start_process(self):
         file_paths = self._file_panel.get_file_paths()
@@ -216,6 +253,23 @@ class MainWindow(FluentWindow):
             self._file_panel.update_status("正在取消...")
 
     def closeEvent(self, event):
+        minimize_to_tray = (
+            hasattr(self, '_tray') and self._tray.isVisible()
+            and Config.instance().get("minimizeToTray", False)
+        )
+        if minimize_to_tray:
+            if self._worker and self._worker.isRunning():
+                _log.info("Waiting for worker thread to finish...")
+                self._file_panel.update_status("正在停止处理任务...")
+                self._worker.requestInterruption()
+                if not self._worker.wait(15000):
+                    _log.warning("Worker thread did not finish in time, terminating")
+                    self._worker.terminate()
+            self._save_all_settings()
+            self.hide()
+            event.ignore()
+            return
+
         if self._worker and self._worker.isRunning():
             _log.info("Waiting for worker thread to finish...")
             self._file_panel.update_status("正在停止处理任务...")
@@ -224,6 +278,8 @@ class MainWindow(FluentWindow):
                 _log.warning("Worker thread did not finish in time, terminating")
                 self._worker.terminate()
         self._save_all_settings()
+        if hasattr(self, '_tray'):
+            self._tray.hide()
         super().closeEvent(event)
 
     def _save_all_settings(self):

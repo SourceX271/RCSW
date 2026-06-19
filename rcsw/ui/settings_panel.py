@@ -168,7 +168,7 @@ class SettingsPanel(QWidget):
 
         slider = Slider(Qt.Orientation.Horizontal)
         slider.setRange(0, 300)
-        slider.setValue(112)
+        slider.setValue(262)
         slider.setSingleStep(25)
         slider.setPageStep(75)
         slider.setObjectName("qualitySlider")
@@ -210,8 +210,8 @@ class SettingsPanel(QWidget):
         slider.valueChanged.connect(self._on_quality_slider_changed)
         self._quality_slider = slider
 
-        self._update_tier_labels(1)
-        self._update_tier_dots(1)
+        self._update_tier_labels(3)
+        self._update_tier_dots(3)
         return row
 
     def _make_output_dir_row(self):
@@ -395,7 +395,7 @@ class SettingsPanel(QWidget):
         c.set("outputSuffix", self.output_suffix)
 
     def _default_quality_tier(self) -> QualityTier:
-        ci = self._cfg.get("defaultQualityIndex", 1)
+        ci = self._cfg.get("defaultQualityIndex", 3)
         idx = max(0, min(int(ci), len(QUALITY_TIERS) - 1))
         return QUALITY_TIERS[idx]
 
