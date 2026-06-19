@@ -59,8 +59,8 @@ WM_MODE_LABELS: dict[WatermarkMode, str] = {
 def tier_from_dpi_q(dpi: int, quality: int) -> int:
     if dpi == 0:
         return 3
-    best = 1
-    best_dist = 9999
+    best = 0
+    best_dist = float("inf")
     for i, t in enumerate(QUALITY_TIERS):
         if t.dpi == 0:
             continue

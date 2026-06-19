@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
-    QLabel,
 )
 from qfluentwidgets import (
     StrongBodyLabel,

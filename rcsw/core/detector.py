@@ -70,24 +70,33 @@ def _filter_by_position(
     return result
 
 
+_POSITION_MARGIN = 0.15
+
+
 def _match_position(
     rect: fitz.Rect,
     pw: float,
     ph: float,
     wm_mode: WatermarkMode,
 ) -> bool:
-    margin = 0.15
+    margin = _POSITION_MARGIN
+    x0, y0, x1, y1 = rect.x0, rect.y0, rect.x1, rect.y1
+    cx = (x0 + x1) / 2
+    cy = (y0 + y1) / 2
     if wm_mode == WatermarkMode.BOTTOM_RIGHT:
-        return rect.x0 > pw * (1 - margin) and rect.y0 > ph * (1 - margin)
+        return (cx > pw * (1 - margin) and cy > ph * (1 - margin) and
+                x1 > pw * (1 - margin))
     if wm_mode == WatermarkMode.BOTTOM_LEFT:
-        return rect.x1 < pw * margin and rect.y0 > ph * (1 - margin)
+        return (cx < pw * margin and cy > ph * (1 - margin) and
+                x0 < pw * margin)
     if wm_mode == WatermarkMode.TOP_RIGHT:
-        return rect.x0 > pw * (1 - margin) and rect.y1 < ph * margin
+        return (cx > pw * (1 - margin) and cy < ph * margin and
+                x1 > pw * (1 - margin))
     if wm_mode == WatermarkMode.TOP_LEFT:
-        return rect.x1 < pw * margin and rect.y1 < ph * margin
+        return (cx < pw * margin and cy < ph * margin and
+                x0 < pw * margin)
     if wm_mode == WatermarkMode.BOTTOM_CENTER:
-        cx = (rect.x0 + rect.x1) / 2
-        return abs(cx - pw / 2) < pw * 0.2 and rect.y0 > ph * (1 - margin)
+        return abs(cx - pw / 2) < pw * 0.2 and cy > ph * (1 - margin)
     return False
 
 
@@ -110,7 +119,7 @@ def _filter_by_xref_consistency(
     }
 
     if not recurring_xrefs:
-        return candidates_per_page
+        return [[] for _ in range(page_count)]
 
     result = []
     for pi in range(page_count):

@@ -168,7 +168,7 @@ class SettingsPanel(QWidget):
 
         slider = Slider(Qt.Orientation.Horizontal)
         slider.setRange(0, 300)
-        slider.setValue(262)
+        slider.setValue(self._tier_to_value(3))
         slider.setSingleStep(25)
         slider.setPageStep(75)
         slider.setObjectName("qualitySlider")

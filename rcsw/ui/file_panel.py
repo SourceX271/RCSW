@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import subprocess
 from datetime import datetime
 
@@ -80,7 +81,9 @@ class _FileItemDelegate(QStyledItemDelegate):
         if not is_valid and not is_selected:
             name_color = QColor("#999")
         painter.setPen(name_color)
-        name_font = QFont("Segoe UI", 10, QFont.Weight.Medium)
+        name_font = painter.font()
+        name_font.setPointSize(10)
+        name_font.setWeight(QFont.Weight.Medium)
         painter.setFont(name_font)
         name_elided = fm.elidedText(name, Qt.TextElideMode.ElideMiddle, right_w - margin)
         painter.drawText(margin, r.top() + 6, right_w - margin, 20,
@@ -94,7 +97,8 @@ class _FileItemDelegate(QStyledItemDelegate):
         if not is_valid and not is_selected:
             info_color = QColor("#E74C3C")
         painter.setPen(info_color)
-        info_font = QFont("Segoe UI", 9)
+        info_font = painter.font()
+        info_font.setPointSize(9)
         painter.setFont(info_font)
         painter.drawText(margin, r.top() + 6, right_w - margin, 20,
                          Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, info_text)
@@ -102,7 +106,8 @@ class _FileItemDelegate(QStyledItemDelegate):
         # Row 2: path (left, elided) + dates (right)
         path_color = QColor("#AAA") if is_selected else QColor(meta)
         painter.setPen(path_color)
-        path_font = QFont("Segoe UI", 8)
+        path_font = painter.font()
+        path_font.setPointSize(8)
         painter.setFont(path_font)
         date_reserved = 320 if (ctime and mtime) else (180 if (ctime or mtime) else 0)
         path_elided = fm.elidedText(path, Qt.TextElideMode.ElideMiddle,
@@ -271,11 +276,19 @@ class FilePanel(QWidget):
         self._update_buttons()
         self._refresh_empty_state()
 
+    def _open_file_in_explorer(self, path: str):
+        if sys.platform == "win32":
+            os.startfile(path)
+        elif sys.platform == "darwin":
+            subprocess.run(["open", path], check=False)
+        else:
+            subprocess.run(["xdg-open", path], check=False)
+
     def _on_open_file(self, item: QListWidgetItem):
         path = item.data(Qt.ItemDataRole.UserRole)
         if path and os.path.isfile(path):
             try:
-                subprocess.run(["start", "", path], shell=True, check=False)
+                self._open_file_in_explorer(path)
             except Exception:
                 pass
 
@@ -368,6 +381,20 @@ class FilePanel(QWidget):
             self._clear_btn.setEnabled(has_items)
             self._remove_btn.setEnabled(has_items)
 
+    def _get_file_dates(self, path: str) -> tuple[str, str]:
+        try:
+            st = os.stat(path)
+            mtime = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M")
+            if sys.platform == "win32":
+                ctime = datetime.fromtimestamp(st.st_ctime).strftime("%Y-%m-%d %H:%M")
+            elif hasattr(st, "st_birthtime"):
+                ctime = datetime.fromtimestamp(st.st_birthtime).strftime("%Y-%m-%d %H:%M")
+            else:
+                ctime = ""
+            return mtime, ctime
+        except OSError:
+            return "", ""
+
     def add_files(self, paths: list[str]):
         invalid_paths = []
         for p in paths:
@@ -390,13 +417,7 @@ class FilePanel(QWidget):
                 invalid_paths.append(os.path.basename(p))
                 _log.warning("Invalid PDF: %s", p)
             name = os.path.basename(p)
-            try:
-                st = os.stat(p)
-                mtime = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M")
-                ctime = datetime.fromtimestamp(st.st_ctime).strftime("%Y-%m-%d %H:%M")
-            except OSError:
-                mtime = ""
-                ctime = ""
+            mtime, ctime = self._get_file_dates(p)
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.DisplayRole, name)
             item.setData(Qt.ItemDataRole.UserRole, p)
@@ -441,8 +462,13 @@ class FilePanel(QWidget):
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-            self._scroll.setStyleSheet(self._drag_border_style)
+            has_pdf = any(
+                url.toLocalFile().lower().endswith(".pdf")
+                for url in event.mimeData().urls()
+            )
+            if has_pdf:
+                event.acceptProposedAction()
+                self._scroll.setStyleSheet(self._drag_border_style)
 
     def dragLeaveEvent(self, event):
         self._scroll.setStyleSheet("")

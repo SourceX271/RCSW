@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
+import sys
 import subprocess
 from pathlib import Path
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor, QIcon
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 
@@ -242,15 +242,46 @@ class MainWindow(FluentWindow):
             )
 
         if output_dir and self._software_settings_panel.open_folder_after:
-            try:
-                subprocess.run(["explorer", os.path.normpath(output_dir)], check=False)
-            except Exception:
-                pass
+            self._open_folder(output_dir)
+
+    def _open_folder(self, path: str):
+        try:
+            if sys.platform == "win32":
+                os.startfile(path)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", path], check=False)
+            else:
+                subprocess.run(["xdg-open", path], check=False)
+        except Exception:
+            _log.warning("Failed to open folder: %s", path)
 
     def _on_cancel(self):
         if self._worker and not self._worker.isFinished():
             self._worker.requestInterruption()
             self._file_panel.update_status("正在取消...")
+
+    def _shutdown_worker(self):
+        if self._worker and self._worker.isRunning():
+            _log.info("Waiting for worker thread to finish...")
+            self._file_panel.update_status("正在停止处理任务...")
+            try:
+                self._worker.finished.disconnect(self._on_finished)
+            except (TypeError, RuntimeError):
+                pass
+            self._worker.finished.connect(self._on_worker_shutdown)
+            self._worker.requestInterruption()
+            return False
+        return True
+
+    def _on_worker_shutdown(self, _success, _errors, _output_dir):
+        self._worker = None
+        self._finalize_close()
+
+    def _finalize_close(self):
+        self._save_all_settings()
+        if hasattr(self, '_tray'):
+            self._tray.hide()
+        QApplication.quit()
 
     def closeEvent(self, event):
         minimize_to_tray = (
@@ -259,27 +290,25 @@ class MainWindow(FluentWindow):
         )
         if minimize_to_tray:
             if self._worker and self._worker.isRunning():
-                _log.info("Waiting for worker thread to finish...")
-                self._file_panel.update_status("正在停止处理任务...")
+                try:
+                    self._worker.finished.disconnect(self._on_finished)
+                except (TypeError, RuntimeError):
+                    pass
+                self._worker.finished.connect(
+                    lambda *_: self.hide()
+                )
                 self._worker.requestInterruption()
-                if not self._worker.wait(15000):
-                    _log.warning("Worker thread did not finish in time, terminating")
-                    self._worker.terminate()
+            else:
+                self.hide()
             self._save_all_settings()
-            self.hide()
             event.ignore()
             return
 
-        if self._worker and self._worker.isRunning():
-            _log.info("Waiting for worker thread to finish...")
-            self._file_panel.update_status("正在停止处理任务...")
-            self._worker.requestInterruption()
-            if not self._worker.wait(15000):
-                _log.warning("Worker thread did not finish in time, terminating")
-                self._worker.terminate()
-        self._save_all_settings()
-        if hasattr(self, '_tray'):
-            self._tray.hide()
+        if not self._shutdown_worker():
+            event.ignore()
+            return
+
+        self._finalize_close()
         super().closeEvent(event)
 
     def _save_all_settings(self):

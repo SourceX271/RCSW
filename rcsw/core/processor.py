@@ -18,6 +18,8 @@ def scale_image(
     img_w, img_h = pil_img.size
     if img_w <= 0 or img_h <= 0:
         return pil_img
+    if page_w <= 0 or page_h <= 0:
+        return pil_img
 
     if target_dpi == 0:
         target_px_w = img_w
@@ -36,8 +38,8 @@ def scale_image(
     elif mode == ScaleMode.FIT_HEIGHT:
         scaled_h = target_px_h
         scaled_w = int(img_w * (target_px_h / img_h))
-    else:
-        target_aspect = target_px_w / target_px_h
+    elif mode in (ScaleMode.FILL_CROP, ScaleMode.FIT):
+        target_aspect = target_px_w / target_px_h if target_px_h > 0 else 1.0
         img_aspect = img_w / img_h
         if mode == ScaleMode.FILL_CROP:
             if img_aspect > target_aspect:
@@ -46,15 +48,15 @@ def scale_image(
             else:
                 scaled_w = target_px_w
                 scaled_h = int(img_h * (target_px_w / img_w))
-        elif mode == ScaleMode.FIT:
+        else:
             if img_aspect > target_aspect:
                 scaled_w = target_px_w
                 scaled_h = int(img_h * (target_px_w / img_w))
             else:
                 scaled_h = target_px_h
                 scaled_w = int(img_w * (target_px_h / img_h))
-        else:
-            scaled_w, scaled_h = target_px_w, target_px_h
+    else:
+        return pil_img
 
     if pil_img.mode == "P":
         pil_img = pil_img.convert("RGBA")
@@ -97,13 +99,18 @@ def scale_image(
 
 
 def to_rgb(pil_img: Image.Image) -> Image.Image:
-    if pil_img.mode in ("RGBA", "LA", "P"):
-        if pil_img.mode == "P":
-            pil_img = pil_img.convert("RGBA")
+    if pil_img.mode in ("RGBA", "LA"):
         background = Image.new("RGB", pil_img.size, (255, 255, 255))
-        mask = pil_img.split()[-1] if pil_img.mode in ("RGBA", "LA") else None
-        background.paste(pil_img, mask=mask)
+        background.paste(pil_img, mask=pil_img.split()[-1])
         return background
+    if pil_img.mode == "P":
+        pil_img = pil_img.convert("RGBA")
+        background = Image.new("RGB", pil_img.size, (255, 255, 255))
+        background.paste(pil_img, mask=pil_img.split()[-1])
+        return background
+    if pil_img.mode == "CMYK":
+        pil_img = pil_img.convert("RGB")
+        return pil_img
     if pil_img.mode != "RGB":
         return pil_img.convert("RGB")
     return pil_img

@@ -52,6 +52,22 @@ class ProcessingWorker(QThread):
         self._output_suffix = output_suffix
         self._overwrite = overwrite
 
+    def _resolve_output_path(self, base_name: str) -> str:
+        out_path = os.path.join(
+            self._output_dir, f"{base_name}{self._output_suffix}.pdf"
+        )
+        if self._overwrite:
+            return out_path
+        counter = 1
+        while os.path.exists(out_path):
+            out_path = os.path.join(
+                self._output_dir, f"{base_name}{self._output_suffix}_{counter}.pdf"
+            )
+            counter += 1
+            if counter > 9999:
+                break
+        return out_path
+
     def run(self):
         success_files = []
         error_files = []
@@ -79,6 +95,7 @@ class ProcessingWorker(QThread):
                 continue
 
             pages_before_file = global_idx
+            new_doc = None
 
             try:
                 wm_indices_list = detect_watermarks(
@@ -116,36 +133,32 @@ class ProcessingWorker(QThread):
                     self.progress.emit(global_idx, total_pages_all, os.path.basename(fp))
 
                 if self.isInterruptionRequested():
-                    new_doc.close()
                     break
 
                 base_name = os.path.splitext(os.path.basename(fp))[0]
-                out_path = os.path.join(
-                    self._output_dir, f"{base_name}{self._output_suffix}.pdf"
-                )
-                if not self._overwrite:
-                    counter = 1
-                    while os.path.exists(out_path):
-                        out_path = os.path.join(
-                            self._output_dir, f"{base_name}{self._output_suffix}_{counter}.pdf"
-                        )
-                        counter += 1
-
+                out_path = self._resolve_output_path(base_name)
                 new_doc.save(out_path, deflate=True, garbage=4, clean=True)
-                new_doc.close()
                 success_files.append((fp, out_path))
 
             except Exception as e:
+                if self.isInterruptionRequested():
+                    break
                 error_files.append((fp, str(e)))
                 remaining = page_counts[fi] - (global_idx - pages_before_file)
                 global_idx += max(0, remaining)
                 _log.error("Error processing %s: %s", os.path.basename(fp), e)
+            finally:
+                if new_doc is not None:
+                    try:
+                        new_doc.close()
+                    except Exception:
+                        pass
 
         for doc in docs:
             if doc is not None:
                 try:
                     doc.close()
-                except Exception as e:
-                    _log.warning("Error closing document: %s", e)
+                except Exception:
+                    pass
 
         self.finished.emit(success_files, error_files, self._output_dir)

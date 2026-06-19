@@ -5,11 +5,12 @@ import sys
 from contextlib import redirect_stdout
 from pathlib import Path
 
-with redirect_stdout(open(os.devnull, 'w', encoding='utf-8')):
-    from PySide6.QtCore import Qt
-    from PySide6.QtGui import QIcon
-    from PySide6.QtWidgets import QApplication
-    from qfluentwidgets import setTheme, Theme
+with open(os.devnull, 'w', encoding='utf-8') as devnull:
+    with redirect_stdout(devnull):
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QIcon
+        from PySide6.QtWidgets import QApplication
+        from qfluentwidgets import setTheme, Theme
 
 
 def _icon_path() -> Path:
@@ -18,7 +19,8 @@ def _icon_path() -> Path:
 
 def main():
     app = QApplication(sys.argv)
-    app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
+    if sys.platform == "win32":
+        app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
 
     icon_path = _icon_path()
     if icon_path.exists():

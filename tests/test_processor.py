@@ -95,3 +95,30 @@ class TestScaleImage:
         result = scale_image(img, 600, 800, 72, ScaleMode.FIT)
         assert result.size[0] <= 600
         assert result.size[1] <= 800
+
+    def test_zero_page_size_returns_unchanged(self):
+        img = self._make_img(400, 300)
+        result = scale_image(img, 0, 0, 150, ScaleMode.FILL_CROP)
+        assert result.size == (400, 300)
+
+    def test_zero_page_height_returns_unchanged(self):
+        img = self._make_img(400, 300)
+        result = scale_image(img, 600, 0, 150, ScaleMode.FILL_CROP)
+        assert result.size == (400, 300)
+
+    def test_unknown_scale_mode_returns_unchanged(self):
+        from enum import Enum
+
+        class FakeMode(Enum):
+            XYZ = "xyz"
+        img = self._make_img(400, 300)
+        result = scale_image(img, 600, 800, 150, FakeMode.XYZ)
+        assert result.size == (400, 300)
+
+
+class TestToRgbCmyk:
+    def test_cmyk_to_rgb(self):
+        rgb_img = Image.new("RGB", (20, 20), (100, 200, 50))
+        cmyk_img = rgb_img.convert("CMYK")
+        result = to_rgb(cmyk_img)
+        assert result.mode == "RGB"

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QVBoxLayout,
@@ -12,14 +14,15 @@ from qfluentwidgets import (
     BodyLabel,
     CheckBox,
     ComboBox,
-    Slider,
     LineEdit,
     PushButton,
     ScrollArea,
-    SpinBox,
     setTheme,
     Theme,
 )
+
+if TYPE_CHECKING:
+    from qfluentwidgets import Slider, SpinBox
 
 from ..core.models import (
     ScaleMode,
@@ -288,6 +291,18 @@ class SoftwareSettingsPanel(QWidget):
 
     def load(self):
         c = self._cfg
+
+        self._theme_combo.blockSignals(True)
+        self._scale_combo.blockSignals(True)
+        self._quality_combo.blockSignals(True)
+        self._wm_mode_combo.blockSignals(True)
+        self._wm_size_slider.blockSignals(True)
+        self._output_dir.blockSignals(True)
+        self._suffix_edit.blockSignals(True)
+        self._overwrite_cb.blockSignals(True)
+        self._open_folder_cb.blockSignals(True)
+        self._minimize_tray_cb.blockSignals(True)
+
         theme_val = c.get("theme", Theme.LIGHT.value)
         for i in range(self._theme_combo.count()):
             d = self._theme_combo.itemData(i)
@@ -318,3 +333,14 @@ class SoftwareSettingsPanel(QWidget):
         self._overwrite_cb.setChecked(bool(c.get("overwriteExisting", False)))
         self._open_folder_cb.setChecked(bool(c.get("openFolderAfter", False)))
         self._minimize_tray_cb.setChecked(bool(c.get("minimizeToTray", False)))
+
+        self._theme_combo.blockSignals(False)
+        self._scale_combo.blockSignals(False)
+        self._quality_combo.blockSignals(False)
+        self._wm_mode_combo.blockSignals(False)
+        self._wm_size_slider.blockSignals(False)
+        self._output_dir.blockSignals(False)
+        self._suffix_edit.blockSignals(False)
+        self._overwrite_cb.blockSignals(False)
+        self._open_folder_cb.blockSignals(False)
+        self._minimize_tray_cb.blockSignals(False)
