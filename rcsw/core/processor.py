@@ -137,8 +137,11 @@ def process_page(
 
     img_data = doc.extract_image(main_img_info[0])
     img_bytes = img_data["image"]
-    pil_img = Image.open(io.BytesIO(img_bytes))
 
+    if dpi == 0:
+        return img_bytes
+
+    pil_img = Image.open(io.BytesIO(img_bytes))
     pil_img = scale_image(pil_img, page_w, page_h, dpi, scale_mode)
     pil_img = to_rgb(pil_img)
 
