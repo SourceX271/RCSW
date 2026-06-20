@@ -5,6 +5,7 @@ import sys
 import subprocess
 from pathlib import Path
 
+from PySide6.QtCore import QSize, QRect
 from PySide6.QtGui import QPalette, QColor, QIcon
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 
@@ -51,9 +52,23 @@ class MainWindow(FluentWindow):
         self._connect_signals()
         self._setup_tray()
 
+        if sys.platform == "darwin":
+            self.titleBar.hBoxLayout.setContentsMargins(8, 0, 0, 0)
+            self.navigationInterface.panel.vBoxLayout.setContentsMargins(0, 28, 0, 5)
+
         self._apply_transparent_chain()
         self._apply_separators()
         qconfig.themeChangedFinished.connect(self._apply_separators)
+
+    if sys.platform == "darwin":
+        def systemTitleBarRect(self, size: QSize) -> QRect:
+            return QRect(0, 0 if self.isFullScreen() else 8, 70, size.height())
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if sys.platform == "darwin":
+            self.titleBar.move(70, 0)
+            self.titleBar.resize(self.width() - 70, self.titleBar.height())
 
     def _init_navigation(self):
         self.addSubInterface(

@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+<<<<<<< HEAD
 # ── macOS Build Script for RCSW ──
 # Usage: chmod +x build.sh && ./build.sh
 
@@ -85,6 +86,15 @@ python3 -m nuitka \
   --include-package=rcsw \
   --include-package-data=rcsw \
   --output-dir="$OUTDIR" \
+=======
+python -m nuitka --mode=app \
+  --lto=yes \
+  --macos-app-icon=rcsw/resources/icon.icns \
+  --enable-plugin=pyside6 \
+  --include-package=rcsw \
+  --include-package-data=rcsw \
+  --output-dir=dist \
+>>>>>>> d87b51422491d5f843d1947110bd260bf91e15ae
   --noinclude-default-mode=nofollow \
   --noinclude-unittest-mode=nofollow \
   --noinclude-pytest-mode=nofollow \
@@ -97,6 +107,7 @@ python3 -m nuitka \
   --nofollow-import-to=numpy \
   --nofollow-import-to=lxml \
   --nofollow-import-to=fontTools \
+<<<<<<< HEAD
   "$ENTRY"
 
 echo ""
@@ -108,3 +119,20 @@ echo ""
 
 # Optionally skip these on pure CI
 # open "$OUTDIR"
+=======
+  --nofollow-import-to=matplotlib \
+  --nofollow-import-to=pandas \
+  --nofollow-import-to=cv2 \
+  --nofollow-import-to=tkinter \
+  --nofollow-import-to=PySide6.QtWebEngine \
+  --nofollow-import-to=PySide6.QtWebEngineCore \
+  --nofollow-import-to=PySide6.QtWebEngineWidgets \
+  --nofollow-import-to=PySide6.QtWebEngineQuick \
+  --nofollow-import-to=PySide6.Qt3DCore \
+  --nofollow-import-to=PySide6.Qt3DAnimation \
+  --nofollow-import-to=PySide6.Qt3DRender \
+  --nofollow-import-to=PySide6.Qt3DInput \
+  --nofollow-import-to=PySide6.Qt3DLogic \
+  --nofollow-import-to=PySide6.Qt3DExtras \
+  main.py
+>>>>>>> d87b51422491d5f843d1947110bd260bf91e15ae
