@@ -14,7 +14,7 @@ with open(os.devnull, 'w', encoding='utf-8') as devnull:
 
 
 def _icon_path() -> Path:
-    return Path(__file__).resolve().parent / "resources" / "icon.svg"
+    return Path(__file__).resolve().parent / "resources" / "icon.ico"
 
 
 def main():

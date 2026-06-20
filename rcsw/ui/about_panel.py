@@ -55,9 +55,11 @@ class AboutPanel(QWidget):
         icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon_lbl.setFixedSize(64, 64)
         icon_lbl.setScaledContents(True)
-        icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.svg"
-        if icon_path.exists():
-            icon_lbl.setPixmap(QPixmap(str(icon_path)))
+        for name in ("icon.png", "icon.svg"):
+            icon_path = Path(__file__).resolve().parent.parent / "resources" / name
+            if icon_path.exists():
+                icon_lbl.setPixmap(QPixmap(str(icon_path)))
+                break
         hl.addWidget(icon_lbl, 0, Qt.AlignmentFlag.AlignCenter)
 
         name_lbl = StrongBodyLabel("RCSW")
@@ -97,7 +99,7 @@ class AboutPanel(QWidget):
         il.addWidget(StrongBodyLabel("许可证"))
         il.addWidget(self._text("GNU General Public License v3.0"))
 
-        il.addWidget(StrongBodyLabel("作者"))
+        il.addWidget(StrongBodyLabel("联系作者"))
         il.addWidget(HyperlinkButton(
             "mailto:860256006@qq.com",
             "860256006@qq.com",
