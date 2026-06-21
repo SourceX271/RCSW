@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import os
 import sys
-import subprocess
-from pathlib import Path
 
-from PySide6.QtCore import QSize, QRect
+from PySide6.QtCore import QSize, QRect, QEvent
 from PySide6.QtGui import QPalette, QColor, QIcon
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
-
 from qfluentwidgets import (
     FluentWindow,
     NavigationItemPosition,
@@ -27,6 +24,9 @@ from .about_panel import AboutPanel
 from ..core.worker import ProcessingWorker
 from ..core.logger import get_logger
 from ..core.config import Config
+from ..core.utils import open_in_system
+
+from pathlib import Path
 
 _log = get_logger("main_window")
 
@@ -48,17 +48,11 @@ class MainWindow(FluentWindow):
 
         self._worker: ProcessingWorker | None = None
 
+        self._window_focused = True
+
         self._init_navigation()
         self._connect_signals()
         self._setup_tray()
-
-        self._taskbar_progress = None
-        if sys.platform == "win32":
-            try:
-                from ..core.windows_taskbar import TaskbarProgress
-                self._taskbar_progress = TaskbarProgress(int(self.winId()))
-            except Exception:
-                pass
 
         if sys.platform == "darwin":
             self.titleBar.hBoxLayout.setContentsMargins(8, 0, 0, 0)
@@ -71,6 +65,11 @@ class MainWindow(FluentWindow):
     if sys.platform == "darwin":
         def systemTitleBarRect(self, size: QSize) -> QRect:
             return QRect(0, 0 if self.isFullScreen() else 8, 70, size.height())
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.Type.ActivationChange:
+            self._window_focused = self.isActiveWindow()
+        super().changeEvent(event)
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
@@ -203,6 +202,8 @@ class MainWindow(FluentWindow):
 
         output_dir = self._settings_panel.output_dir
         if not output_dir:
+            output_dir = self._software_settings_panel.default_output_dir
+        if not output_dir:
             output_dir = os.path.dirname(file_paths[0])
         if not os.path.isdir(output_dir):
             InfoBar.warning(
@@ -235,9 +236,6 @@ class MainWindow(FluentWindow):
 
     def _on_progress(self, current: int, total: int, filename: str):
         self._file_panel.update_progress(current, total, filename)
-        if hasattr(self, '_taskbar_progress') and self._taskbar_progress:
-            self._taskbar_progress.set_value(int(current / total * 100) if total > 0 else 0, 100)
-            self._taskbar_progress.set_normal()
 
     def _on_file_started(self, index: int, filename: str, total_pages: int):
         pass
@@ -251,12 +249,8 @@ class MainWindow(FluentWindow):
     def _on_finished(self, success: list, errors: list, output_dir: str = ""):
         self._worker = None
         self._file_panel.set_processing(False)
-        self._file_panel.clear_file_progress()
-        if self._taskbar_progress:
-            try:
-                self._taskbar_progress.hide()
-            except Exception:
-                pass
+        use_system_notify = Config.instance().get("useSystemNotification", False)
+        use_tray = use_system_notify and not self._window_focused and hasattr(self, '_tray')
 
         if success:
             parts = []
@@ -265,6 +259,13 @@ class MainWindow(FluentWindow):
             info = "\n".join(parts)
             if len(success) > 5:
                 info += f"\n... 等 {len(success) - 5} 个文件"
+            if use_tray:
+                self._tray.showMessage(
+                    f"成功处理 {len(success)} 个文件",
+                    info.replace("\n", ", ")[:200],
+                    QSystemTrayIcon.MessageIcon.Information,
+                    5000,
+                )
             InfoBar.success(
                 title=f"成功处理 {len(success)} 个文件",
                 content=info,
@@ -277,6 +278,13 @@ class MainWindow(FluentWindow):
             for e in errors[:3]:
                 parts.append(f"{os.path.basename(e[0])}: {e[1][:60]}")
             info = "\n".join(parts)
+            if use_tray:
+                self._tray.showMessage(
+                    f"{len(errors)} 个文件处理失败",
+                    info.replace("\n", ", ")[:200],
+                    QSystemTrayIcon.MessageIcon.Warning,
+                    5000,
+                )
             InfoBar.error(
                 title=f"{len(errors)} 个文件处理失败",
                 content=info,
@@ -290,12 +298,7 @@ class MainWindow(FluentWindow):
 
     def _open_folder(self, path: str):
         try:
-            if sys.platform == "win32":
-                os.startfile(path)
-            elif sys.platform == "darwin":
-                subprocess.run(["open", path], check=False)
-            else:
-                subprocess.run(["xdg-open", path], check=False)
+            open_in_system(path)
         except Exception:
             _log.warning("Failed to open folder: %s", path)
 

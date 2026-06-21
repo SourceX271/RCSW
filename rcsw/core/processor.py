@@ -128,8 +128,9 @@ def process_page(
     jpeg_quality: int,
     scale_mode: ScaleMode,
     doc: fitz.Document,
+    cached_imgs: list[tuple] | None = None,
 ) -> bytes | None:
-    imgs = page.get_images(full=True)
+    imgs = cached_imgs if cached_imgs is not None else page.get_images(full=True)
     main_img_info = None
     main_img_size = 0
 

@@ -25,6 +25,8 @@ class Config:
     def _resolve_path() -> Path:
         if sys.platform == "win32":
             base = Path(os.environ.get("APPDATA", "") or Path.home() / "AppData" / "Roaming") / "RCSW"
+        elif sys.platform == "darwin":
+            base = Path.home() / "Library" / "Application Support" / "RCSW"
         else:
             xdg = os.environ.get("XDG_CONFIG_HOME", "")
             if xdg:

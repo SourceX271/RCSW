@@ -14,11 +14,20 @@ _console_handler: logging.StreamHandler | None = None
 
 
 def _get_log_dir() -> Path:
-    appdata = os.environ.get("APPDATA", "")
-    if appdata:
-        base = Path(appdata) / "RCSW"
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA", "")
+        if appdata:
+            base = Path(appdata) / "RCSW"
+        else:
+            base = Path.home() / "AppData" / "Roaming" / "RCSW"
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Logs" / "RCSW"
     else:
-        base = Path.home() / ".rcsw"
+        xdg = os.environ.get("XDG_CONFIG_HOME", "")
+        if xdg:
+            base = Path(xdg) / "rcsw"
+        else:
+            base = Path.home() / ".config" / "rcsw"
     return base / "logs"
 
 

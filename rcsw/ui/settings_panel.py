@@ -38,7 +38,6 @@ class SettingsPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("settingsPanel")
-        self._block_sync = False
         self._tier_labels: list[QLabel] = []
         self._dpi_slider: Slider | None = None
         self._dpi_spin: SpinBox | None = None
@@ -150,11 +149,11 @@ class SettingsPanel(QWidget):
         self._adv_card.setVisible(is_adv)
 
         if mode == "basic":
-            self._block_sync = True
             tier = tier_from_dpi_q(self.dpi, self.jpeg_quality)
             self._last_quality_tier = tier
+            self._quality_slider.blockSignals(True)
             self._quality_slider.setValue(self._tier_to_value(tier))
-            self._block_sync = False
+            self._quality_slider.blockSignals(False)
 
     def _make_quality_slider_row(self):
         row = QHBoxLayout()
@@ -281,42 +280,42 @@ class SettingsPanel(QWidget):
             return
         self._last_quality_tier = tier
 
-        if self._block_sync:
-            return
         self._apply_tier(tier)
 
     def _apply_tier(self, tier: int):
         t = QUALITY_TIERS[tier]
         dpi_val, jpg_val = t.dpi, t.jpeg
 
-        self._block_sync = True
-
         if self._dpi_slider:
+            self._dpi_slider.blockSignals(True)
             self._dpi_slider.setEnabled(dpi_val > 0)
             if dpi_val > 0:
                 self._dpi_slider.setValue(dpi_val)
+            self._dpi_slider.blockSignals(False)
         if self._dpi_spin:
+            self._dpi_spin.blockSignals(True)
             self._dpi_spin.setEnabled(dpi_val > 0)
             if dpi_val > 0:
                 self._dpi_spin.setValue(dpi_val)
+            self._dpi_spin.blockSignals(False)
 
         if self._jpeg_slider:
+            self._jpeg_slider.blockSignals(True)
             self._jpeg_slider.setValue(jpg_val)
+            self._jpeg_slider.blockSignals(False)
         if self._jpeg_spin:
+            self._jpeg_spin.blockSignals(True)
             self._jpeg_spin.setValue(jpg_val)
-
-        self._block_sync = False
+            self._jpeg_spin.blockSignals(False)
 
     def _on_advanced_param_changed(self, _value):
-        if self._block_sync:
-            return
-        self._block_sync = True
         tier = tier_from_dpi_q(self.dpi, self.jpeg_quality)
         self._last_quality_tier = tier
+        self._quality_slider.blockSignals(True)
         self._quality_slider.setValue(self._tier_to_value(tier))
+        self._quality_slider.blockSignals(False)
         self._update_tier_labels(tier)
         self._update_tier_dots(tier)
-        self._block_sync = False
 
     def _on_browse_output(self):
         path = QFileDialog.getExistingDirectory(self, "选择输出目录")
@@ -395,63 +394,57 @@ class SettingsPanel(QWidget):
         c.set("outputSuffix", self.output_suffix)
 
     def _default_quality_tier(self) -> QualityTier:
-        ci = self._cfg.get("defaultQualityIndex", 3)
+        ci = self._cfg.get("defaultQualityIndex", 1)
         idx = max(0, min(int(ci), len(QUALITY_TIERS) - 1))
         return QUALITY_TIERS[idx]
 
     def load(self):
         c = self._cfg
         if self._scale_combo:
-            mode = c.get("scaleMode") or c.get("defaultScaleMode", ScaleMode.FILL_CROP.value)
+            mode = c.get("scaleMode") or ScaleMode.FILL_CROP.value
             for i in range(self._scale_combo.count()):
                 d = self._scale_combo.itemData(i)
                 if isinstance(d, ScaleMode) and d.value == mode:
                     self._scale_combo.setCurrentIndex(i)
                     break
         if self._quality_slider:
-            self._block_sync = True
+            self._quality_slider.blockSignals(True)
             qv = c.get("qualitySliderValue")
             if qv is not None:
                 self._quality_slider.setValue(int(qv))
             else:
                 t = self._default_quality_tier()
                 self._quality_slider.setValue(self._tier_to_value(tier_from_dpi_q(t.dpi, t.jpeg)))
-            self._block_sync = False
+            self._quality_slider.blockSignals(False)
         if self._dpi_slider:
-            self._block_sync = True
+            self._dpi_slider.blockSignals(True)
             dpi = c.get("dpi")
             if dpi is not None:
                 self._dpi_slider.setValue(int(dpi))
             else:
                 self._dpi_slider.setValue(self._default_quality_tier().dpi)
-            self._block_sync = False
+            self._dpi_slider.blockSignals(False)
         if self._jpeg_slider:
-            self._block_sync = True
+            self._jpeg_slider.blockSignals(True)
             jpg = c.get("jpegQuality")
             if jpg is not None:
                 self._jpeg_slider.setValue(int(jpg))
             else:
                 self._jpeg_slider.setValue(self._default_quality_tier().jpeg)
-            self._block_sync = False
+            self._jpeg_slider.blockSignals(False)
         if self._wm_slider:
-            val = c.get("maxWmSize")
-            if val is None:
-                val = c.get("defaultWmSize", 500)
+            val = c.get("maxWmSize", 500)
             self._wm_slider.setValue(int(val))
         if self._wm_mode_combo:
-            mode = c.get("wmMode") or c.get("defaultWmMode", WatermarkMode.AUTO.value)
+            mode = c.get("wmMode") or WatermarkMode.AUTO.value
             for i in range(self._wm_mode_combo.count()):
                 d = self._wm_mode_combo.itemData(i)
                 if isinstance(d, WatermarkMode) and d.value == mode:
                     self._wm_mode_combo.setCurrentIndex(i)
                     break
         if self._output_dir:
-            val = c.get("outputDir")
-            if not val:
-                val = c.get("defaultOutputDir", "")
+            val = c.get("outputDir", "")
             self._output_dir.setText(val)
         if self._output_suffix:
-            val = c.get("outputSuffix")
-            if not val:
-                val = c.get("defaultOutputSuffix", "_RCSW")
+            val = c.get("outputSuffix", "_RCSW")
             self._output_suffix.setText(val)

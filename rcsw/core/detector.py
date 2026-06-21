@@ -17,13 +17,25 @@ def detect_watermarks(
     wm_mode: WatermarkMode = WatermarkMode.AUTO,
     cancel_fn: Callable[[], bool] | None = None,
 ) -> List[Set[int]]:
+    """返回每页的水印图片索引集合。"""
+    result, _ = detect_watermarks_with_images(doc, max_wm_size, wm_mode, cancel_fn)
+    return result
+
+
+def detect_watermarks_with_images(
+    doc: fitz.Document,
+    max_wm_size: int = 500,
+    wm_mode: WatermarkMode = WatermarkMode.AUTO,
+    cancel_fn: Callable[[], bool] | None = None,
+) -> tuple[List[Set[int]], list[list[tuple]]]:
+    """返回 (每页水印索引, 每页图片信息列表)。"""
     page_count = doc.page_count
     all_candidates: List[List[int]] = []
     all_imgs: list[list[tuple]] = []
 
     for pi in range(page_count):
         if cancel_fn and cancel_fn():
-            return [set() for _ in range(page_count)]
+            return [set() for _ in range(page_count)], [[] for _ in range(page_count)]
 
         page = doc[pi]
         pw = page.mediabox.width
@@ -48,7 +60,7 @@ def detect_watermarks(
         page_count, wm_mode.value, max_wm_size,
         sum(len(s) for s in result),
     )
-    return result
+    return result, all_imgs
 
 
 def _filter_by_size(imgs: list[tuple], max_wm_size: int) -> list[int]:

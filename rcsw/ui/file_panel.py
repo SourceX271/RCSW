@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import sys
-import subprocess
 from datetime import datetime
 
 from PySide6.QtCore import Qt, Signal, QSize
@@ -30,9 +29,21 @@ from qfluentwidgets import (
 
 import fitz
 from ..core.logger import get_logger
+from ..core.utils import open_in_system
 from .style import ACCENT, ACCENT_TRANSLUCENT, PANEL_BG, body_text_color, meta_text_color, empty_label_style
 
 _log = get_logger("file_panel")
+
+_COLOR_HOVER = QColor("#00000014")
+_COLOR_EVEN_ROW = QColor("#00000006")
+_COLOR_TRANSPARENT = QColor(0, 0, 0, 0)
+_COLOR_SEPARATOR = QColor("#0000000A")
+_COLOR_INVALID_NAME = QColor("#999")
+_COLOR_INVALID_INFO = QColor("#E74C3C")
+_COLOR_PROGRESS_BG_LIGHT = QColor("#20000000")
+_COLOR_PROGRESS_BG_DARK = QColor("#30FFFFFF")
+_COLOR_PROGRESS_FILL = QColor("#0078D4")
+_COLOR_AAA = QColor("#AAA")
 
 
 class _FileItemDelegate(QStyledItemDelegate):
@@ -51,15 +62,15 @@ class _FileItemDelegate(QStyledItemDelegate):
         if is_selected:
             painter.fillRect(r, ACCENT_TRANSLUCENT)
         elif is_hovered:
-            painter.fillRect(r, QColor("#00000014"))
+            painter.fillRect(r, _COLOR_HOVER)
         elif index.row() % 2 == 0:
-            painter.fillRect(r, QColor("#00000006"))
+            painter.fillRect(r, _COLOR_EVEN_ROW)
         else:
-            painter.fillRect(r, QColor(0, 0, 0, 0))
+            painter.fillRect(r, _COLOR_TRANSPARENT)
 
         if not is_selected:
             sep_y = r.bottom() - 1
-            painter.setPen(QColor("#0000000A"))
+            painter.setPen(_COLOR_SEPARATOR)
             painter.drawLine(r.left() + 12, sep_y, r.right() - 12, sep_y)
 
         fm = option.fontMetrics
@@ -79,7 +90,7 @@ class _FileItemDelegate(QStyledItemDelegate):
         # Row 1: filename (left) + pages/size (right)
         name_color = white if is_selected else QColor(body)
         if not is_valid and not is_selected:
-            name_color = QColor("#999")
+            name_color = _COLOR_INVALID_NAME
         painter.setPen(name_color)
         name_font = painter.font()
         name_font.setPointSize(10)
@@ -95,7 +106,7 @@ class _FileItemDelegate(QStyledItemDelegate):
             info_text = "无法读取此文件"
         info_color = QColor("#AAA") if is_selected else QColor(meta)
         if not is_valid and not is_selected:
-            info_color = QColor("#E74C3C")
+            info_color = _COLOR_INVALID_INFO
         painter.setPen(info_color)
         info_font = painter.font()
         info_font.setPointSize(9)
@@ -131,10 +142,10 @@ class _FileItemDelegate(QStyledItemDelegate):
             bar_x = margin
             bar_w = right_w - margin
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor("#20000000" if not is_selected else "#30FFFFFF"))
+            painter.setBrush(_COLOR_PROGRESS_BG_LIGHT if not is_selected else _COLOR_PROGRESS_BG_DARK)
             painter.drawRoundedRect(bar_x, bar_y, bar_w, bar_h, 2, 2)
             if progress_val > 0:
-                painter.setBrush(QColor("#0078D4"))
+                painter.setBrush(_COLOR_PROGRESS_FILL)
                 fill_w = int(bar_w * progress_val / 100)
                 painter.drawRoundedRect(bar_x, bar_y, fill_w, bar_h, 2, 2)
 
@@ -292,19 +303,11 @@ class FilePanel(QWidget):
         self._update_buttons()
         self._refresh_empty_state()
 
-    def _open_file_in_explorer(self, path: str):
-        if sys.platform == "win32":
-            os.startfile(path)
-        elif sys.platform == "darwin":
-            subprocess.run(["open", path], check=False)
-        else:
-            subprocess.run(["xdg-open", path], check=False)
-
     def _on_open_file(self, item: QListWidgetItem):
         path = item.data(Qt.ItemDataRole.UserRole)
         if path and os.path.isfile(path):
             try:
-                self._open_file_in_explorer(path)
+                open_in_system(path)
             except Exception:
                 pass
 

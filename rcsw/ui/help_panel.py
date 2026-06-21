@@ -87,9 +87,7 @@ class HelpPanel(QWidget):
             for line in lines:
                 lbl = BodyLabel(line)
                 lbl.setWordWrap(True)
-                font = lbl.font()
-                font.setPointSize(10)
-                lbl.setFont(font)
+                lbl.setObjectName("helpContentLabel")
                 card_layout.addWidget(lbl)
 
             root_layout.addWidget(card)

@@ -8,13 +8,13 @@ from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QFileDialog,
-    QMessageBox,
 )
 from qfluentwidgets import (
     StrongBodyLabel,
     BodyLabel,
     CheckBox,
     ComboBox,
+    Dialog,
     InfoBar,
     InfoBarPosition,
     LineEdit,
@@ -24,11 +24,11 @@ from qfluentwidgets import (
     Theme,
 )
 
+import shutil
+
 from ..core.config import Config
 from .style import PANEL_BG, TransparentCard
 from ..core.logger import get_log_path, set_console_enabled, is_console_enabled
-import shutil
-import sys as _sys
 
 
 class SoftwareSettingsPanel(QWidget):
@@ -92,15 +92,6 @@ class SoftwareSettingsPanel(QWidget):
         self._system_notify_cb = CheckBox("窗口失焦时使用系统通知")
         c1_layout.addWidget(self._system_notify_cb)
 
-        self._taskbar_cb = CheckBox("任务栏显示处理进度")
-        if _sys.platform != "win32":
-            self._taskbar_cb.setEnabled(False)
-            self._taskbar_cb.setToolTip(
-                "macOS 不支持任务栏进度显示" if _sys.platform == "darwin"
-                else "Linux 不支持任务栏进度显示"
-            )
-        c1_layout.addWidget(self._taskbar_cb)
-
         root_layout.addWidget(c1)
 
         c3 = TransparentCard()
@@ -120,39 +111,6 @@ class SoftwareSettingsPanel(QWidget):
         c3_layout.addWidget(self._open_folder_cb)
 
         root_layout.addWidget(c3)
-
-        ui_card = TransparentCard()
-        ui_layout = QVBoxLayout(ui_card)
-        ui_layout.setContentsMargins(16, 12, 16, 16)
-        ui_layout.setSpacing(14)
-        ui_layout.addWidget(StrongBodyLabel("界面与行为"))
-
-        silent_row = QHBoxLayout()
-        silent_row.setSpacing(12)
-        silent_label = BodyLabel("双击PDF处理模式")
-        silent_label.setFixedWidth(150)
-        silent_row.addWidget(silent_label)
-        self._silent_mode_combo = ComboBox()
-        self._silent_mode_combo.addItem("迷你窗口", userData="mini")
-        self._silent_mode_combo.addItem("无窗口", userData="headless")
-        self._silent_mode_combo.setCurrentIndex(0)
-        silent_row.addWidget(self._silent_mode_combo, 1)
-        ui_layout.addLayout(silent_row)
-
-        progress_style_row = QHBoxLayout()
-        progress_style_row.setSpacing(12)
-        ps_label = BodyLabel("文件进度显示")
-        ps_label.setFixedWidth(150)
-        progress_style_row.addWidget(ps_label)
-        self._file_progress_combo = ComboBox()
-        self._file_progress_combo.addItem("进度条", userData="bar")
-        self._file_progress_combo.addItem("百分比", userData="percent")
-        self._file_progress_combo.addItem("两者", userData="both")
-        self._file_progress_combo.setCurrentIndex(0)
-        progress_style_row.addWidget(self._file_progress_combo, 1)
-        ui_layout.addLayout(progress_style_row)
-
-        root_layout.addWidget(ui_card)
 
         c4 = TransparentCard()
         c4_layout = QVBoxLayout(c4)
@@ -193,10 +151,6 @@ class SoftwareSettingsPanel(QWidget):
         data_btn_row.addWidget(clear_cache_btn)
 
         reset_btn = PushButton("重置设置")
-        reset_btn.setStyleSheet(
-            "PushButton { color: #E74C3C; }"
-            "PushButton:hover { color: #C0392B; }"
-        )
         reset_btn.clicked.connect(self._on_reset_settings)
         data_btn_row.addWidget(reset_btn)
 
@@ -268,13 +222,12 @@ class SoftwareSettingsPanel(QWidget):
                 pass
 
     def _on_clear_cache(self):
-        reply = QMessageBox.question(
-            self, "清除缓存",
-            "确定要清除缓存吗？\n这将删除日志文件和临时数据。",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return
+        dlg = Dialog("清除缓存", "确定要清除缓存吗？\n这将删除日志文件和临时数据。", self.window())
+        dlg.setTitleBarVisible(False)
+        dlg.yesSignal.connect(lambda: self._do_clear_cache())
+        dlg.show()
+
+    def _do_clear_cache(self):
         try:
             log_file = get_log_path()
             if log_file.exists():
@@ -291,15 +244,17 @@ class SoftwareSettingsPanel(QWidget):
         )
 
     def _on_reset_settings(self):
-        reply = QMessageBox.warning(
-            self, "重置设置",
-            "确定要重置所有设置吗？\n所有自定义设置将恢复为默认值，此操作不可撤销。",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return
+        dlg = Dialog("重置设置", "确定要重置所有设置吗？\n所有自定义设置将恢复为默认值，此操作不可撤销。", self.window())
+        dlg.setTitleBarVisible(False)
+        dlg.yesSignal.connect(lambda: self._do_reset_settings())
+        dlg.show()
+
+    def _do_reset_settings(self):
         self._cfg.clear_all()
         self.load()
+        default_theme = Theme.LIGHT
+        setTheme(default_theme)
+        self._cfg.set("theme", default_theme.value)
         InfoBar.success(
             title="已重置", content="所有设置已恢复为默认值",
             parent=self.window(), position=InfoBarPosition.TOP, duration=3000,
@@ -334,9 +289,6 @@ class SoftwareSettingsPanel(QWidget):
         self._open_folder_cb.stateChanged.connect(lambda v: c.set("openFolderAfter", bool(v)))
         self._minimize_tray_cb.stateChanged.connect(lambda v: c.set("minimizeToTray", bool(v)))
         self._system_notify_cb.stateChanged.connect(lambda v: c.set("useSystemNotification", bool(v)))
-        self._taskbar_cb.stateChanged.connect(lambda v: c.set("showTaskbarProgress", bool(v)))
-        self._silent_mode_combo.currentIndexChanged.connect(lambda: c.set("silentMode", self._silent_mode_combo.currentData()))
-        self._file_progress_combo.currentIndexChanged.connect(lambda: c.set("fileProgressStyle", self._file_progress_combo.currentData()))
 
     def save_to_config(self):
         c = self._cfg
@@ -349,9 +301,6 @@ class SoftwareSettingsPanel(QWidget):
         c.set("minimizeToTray", self.minimize_to_tray)
         c.set("consoleLogEnabled", self._log_enable_cb.isChecked())
         c.set("useSystemNotification", self._system_notify_cb.isChecked())
-        c.set("showTaskbarProgress", self._taskbar_cb.isChecked())
-        c.set("silentMode", self._silent_mode_combo.currentData())
-        c.set("fileProgressStyle", self._file_progress_combo.currentData())
 
     def load(self):
         c = self._cfg
@@ -364,9 +313,6 @@ class SoftwareSettingsPanel(QWidget):
         self._minimize_tray_cb.blockSignals(True)
         self._log_enable_cb.blockSignals(True)
         self._system_notify_cb.blockSignals(True)
-        self._taskbar_cb.blockSignals(True)
-        self._silent_mode_combo.blockSignals(True)
-        self._file_progress_combo.blockSignals(True)
 
         theme_val = c.get("theme", Theme.LIGHT.value)
         for i in range(self._theme_combo.count()):
@@ -388,17 +334,6 @@ class SoftwareSettingsPanel(QWidget):
         set_console_enabled(log_enabled)
 
         self._system_notify_cb.setChecked(bool(c.get("useSystemNotification", False)))
-        self._taskbar_cb.setChecked(bool(c.get("showTaskbarProgress", True)))
-        silent_mode = c.get("silentMode", "mini")
-        for i in range(self._silent_mode_combo.count()):
-            if self._silent_mode_combo.itemData(i) == silent_mode:
-                self._silent_mode_combo.setCurrentIndex(i)
-                break
-        fp_style = c.get("fileProgressStyle", "bar")
-        for i in range(self._file_progress_combo.count()):
-            if self._file_progress_combo.itemData(i) == fp_style:
-                self._file_progress_combo.setCurrentIndex(i)
-                break
 
         self._theme_combo.blockSignals(False)
         self._output_dir.blockSignals(False)
@@ -408,6 +343,3 @@ class SoftwareSettingsPanel(QWidget):
         self._minimize_tray_cb.blockSignals(False)
         self._log_enable_cb.blockSignals(False)
         self._system_notify_cb.blockSignals(False)
-        self._taskbar_cb.blockSignals(False)
-        self._silent_mode_combo.blockSignals(False)
-        self._file_progress_combo.blockSignals(False)

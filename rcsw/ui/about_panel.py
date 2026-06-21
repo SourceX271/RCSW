@@ -55,7 +55,10 @@ class AboutPanel(QWidget):
         icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon_lbl.setFixedSize(64, 64)
         icon_lbl.setScaledContents(True)
-        icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.svg"
+        base = Path(__file__).resolve().parent.parent / "resources"
+        icon_path = base / "icon.png"
+        if not icon_path.exists():
+            icon_path = base / "icon.svg"
         if icon_path.exists():
             icon_lbl.setPixmap(QPixmap(str(icon_path)))
         hl.addWidget(icon_lbl, 0, Qt.AlignmentFlag.AlignCenter)

@@ -5,9 +5,9 @@ import os
 from PySide6.QtCore import QThread, Signal
 
 from .models import ScaleMode, WatermarkMode
-from .detector import detect_watermarks
-from .processor import process_page
+from .engine import process_file
 from .logger import get_logger
+from .utils import resolve_output_path
 
 import fitz
 
@@ -55,118 +55,70 @@ class ProcessingWorker(QThread):
         self._output_suffix = output_suffix
         self._overwrite = overwrite
 
-    def _resolve_output_path(self, base_name: str) -> str:
-        out_path = os.path.join(
-            self._output_dir, f"{base_name}{self._output_suffix}.pdf"
-        )
-        if self._overwrite:
-            return out_path
-        counter = 1
-        while os.path.exists(out_path):
-            out_path = os.path.join(
-                self._output_dir, f"{base_name}{self._output_suffix}_{counter}.pdf"
-            )
-            counter += 1
-            if counter > 9999:
-                break
-        return out_path
-
     def run(self):
         _log.info("开始处理 %d 个文件, DPI=%d, JPEG=%d, 缩放=%s",
                    len(self._file_paths), self._dpi, self._jpeg_quality,
                    self._scale_mode.value)
         success_files = []
         error_files = []
-        total_pages_all = 0
         page_counts: list[int] = []
-        docs: list[fitz.Document] = []
+        docs: list[fitz.Document | None] = []
 
         for fp in self._file_paths:
             try:
                 doc = fitz.open(fp)
                 docs.append(doc)
                 page_counts.append(doc.page_count)
-                total_pages_all += doc.page_count
             except Exception as e:
                 error_files.append((fp, str(e)))
                 docs.append(None)
                 page_counts.append(0)
 
-        global_idx = 0
+        total_pages_all = sum(page_counts)
+        global_idx = [0]
 
-        for fi, (fp, doc) in enumerate(zip(self._file_paths, docs)):
+        for fi, fp in enumerate(self._file_paths):
             if self.isInterruptionRequested():
                 break
-            if doc is None:
+            if docs[fi] is None:
+                global_idx[0] += page_counts[fi]
                 continue
 
-            pages_before_file = global_idx
-            new_doc = None
+            doc = docs[fi]
+            self.file_started.emit(fi, os.path.basename(fp), doc.page_count)
+            pages_before = global_idx[0]
 
-            try:
-                wm_indices_list = detect_watermarks(
-                    doc, self._max_wm_size, self._wm_mode,
-                    cancel_fn=self.isInterruptionRequested,
-                )
+            def make_progress(f_idx: int, f_name: str):
+                def cb(cur: int, total: int, _fname: str):
+                    global_idx[0] += 1
+                    self.progress.emit(global_idx[0], total_pages_all, f_name)
+                    self.file_progress.emit(f_idx, cur, total)
+                return cb
 
-                self.file_started.emit(fi, os.path.basename(fp), doc.page_count)
+            result = process_file(
+                file_path=fp,
+                output_dir=self._output_dir,
+                dpi=self._dpi,
+                jpeg_quality=self._jpeg_quality,
+                max_wm_size=self._max_wm_size,
+                wm_mode=self._wm_mode,
+                scale_mode=self._scale_mode,
+                output_suffix=self._output_suffix,
+                overwrite=self._overwrite,
+                cancel_fn=self.isInterruptionRequested,
+                page_progress_fn=make_progress(fi, os.path.basename(fp)),
+                pre_opened_doc=doc,
+            )
 
-                new_doc = fitz.open()
-                for pi in range(doc.page_count):
-                    if self.isInterruptionRequested():
-                        break
-                    page = doc[pi]
-                    page_w = page.mediabox.width
-                    page_h = page.mediabox.height
-                    wm_set = wm_indices_list[pi]
-
-                    img_data = process_page(
-                        page,
-                        wm_set,
-                        page_w,
-                        page_h,
-                        self._dpi,
-                        self._jpeg_quality,
-                        self._scale_mode,
-                        doc,
-                    )
-
-                    new_page = new_doc.new_page(width=page_w, height=page_h)
-                    if img_data:
-                        new_page.insert_image(
-                            fitz.Rect(0, 0, page_w, page_h), stream=img_data
-                        )
-
-                    global_idx += 1
-                    self.progress.emit(global_idx, total_pages_all, os.path.basename(fp))
-                    self.file_progress.emit(fi, pi + 1, doc.page_count)
-
-                if self.isInterruptionRequested():
-                    break
-
-                base_name = os.path.splitext(os.path.basename(fp))[0]
-                out_path = self._resolve_output_path(base_name)
-                new_doc.save(out_path, deflate=True, garbage=4, clean=True)
-                success_files.append((fp, out_path))
-                self.file_finished.emit(fi, out_path)
-                out_size = os.path.getsize(out_path) / (1024 * 1024)
-                _log.info("已保存: %s -> %s (%.1f MB, %d 页)",
-                          os.path.basename(fp), os.path.basename(out_path),
-                          out_size, doc.page_count)
-
-            except Exception as e:
-                if self.isInterruptionRequested():
-                    break
-                error_files.append((fp, str(e)))
-                remaining = page_counts[fi] - (global_idx - pages_before_file)
-                global_idx += max(0, remaining)
-                _log.error("Error processing %s: %s", os.path.basename(fp), e)
-            finally:
-                if new_doc is not None:
-                    try:
-                        new_doc.close()
-                    except Exception:
-                        pass
+            if result is None:
+                processed = global_idx[0] - pages_before
+                remaining = max(0, page_counts[fi] - processed)
+                global_idx[0] += remaining
+                if not self.isInterruptionRequested():
+                    error_files.append((fp, "处理失败"))
+            else:
+                success_files.append(result)
+                self.file_finished.emit(fi, result[1])
 
         for doc in docs:
             if doc is not None:
@@ -176,5 +128,5 @@ class ProcessingWorker(QThread):
                     pass
 
         _log.info("处理完成: 成功%d, 失败%d, 输出目录=%s",
-                  len(success_files), len(error_files), self._output_dir)
+                   len(success_files), len(error_files), self._output_dir)
         self.finished.emit(success_files, error_files, self._output_dir)
