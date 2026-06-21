@@ -1,19 +1,6 @@
 python -m nuitka --standalone --windows-console-mode=disable `
   --enable-plugin=pyside6 `
   --include-package=rcsw `
-  --include-package-data=rcsw `
   --output-dir=dist `
   --windows-icon-from-ico=rcsw/resources/icon.ico `
-  --noinclude-default-mode=nofollow `
-  --noinclude-unittest-mode=nofollow `
-  --noinclude-pytest-mode=nofollow `
-  --noinclude-setuptools-mode=nofollow `
-  --noinclude-IPython-mode=nofollow `
-  --noinclude-pydoc-mode=nofollow `
-  --noinclude-dask-mode=nofollow `
-  --noinclude-numba-mode=nofollow `
-  --nofollow-import-to=scipy `
-  --nofollow-import-to=numpy `
-  --nofollow-import-to=lxml `
-  --nofollow-import-to=fontTools `
   main.py

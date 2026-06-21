@@ -1,10 +1,5 @@
 # RCSW — Remove CamScanner Watermark
 
-> [!TIP]
->
-> 如果你被扫描全能王的水印折磨过，那么恭喜你发现了这个软件
-
-
 RCSW 是一款专门用于去除「扫描全能王」（CamScanner）生成 PDF 文件水印的桌面工具。针对扫描全能王的特定水印格式进行了优化，能够精准识别并去除水印图标，同时完整保留扫描图片内容。
 
 ## 特性
@@ -29,22 +24,15 @@ RCSW 是一款专门用于去除「扫描全能王」（CamScanner）生成 PDF 
 | 图像处理 | Pillow |
 | 构建 | Nuitka |
 
-## 安装和运行
-### 下载安装包
-1. 点击右侧 Releases 打开发行版页面
-2. 找到最新版本
-3. 选择适合你的安装包或压缩包
+## 安装
 
-### 从源代码运行
-
-安装
 ```bash
 git clone https://github.com/SourceX271/RCSW.git
 cd RCSW
 pip install -r requirements.txt
 ```
 
- 运行
+## 运行
 
 ```bash
 python main.py
@@ -57,15 +45,6 @@ python main.py
 ```
 
 构建产物输出到 `dist/` 目录。
-
-## 报告 Bug 或提出建议
-你的经验和建议是我和我的软件进步的动力，如果你遇到了 Bug 或你有一些好建议，欢迎随时提出
-
-
-报告方式：  
-1. 发邮件至 `860256007@qq.com` 或 `liyichen314@outlook.com`
-2. 点击上方 `Issues` 提出 Bug 或建议
-3. 到作者 [bilibili 首页](https://space.bilibili.com/3461569679722999) 随便找一个与这个软件相关的视频评论或私信
 
 ## 许可证
 
