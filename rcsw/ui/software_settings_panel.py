@@ -8,12 +8,15 @@ from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QFileDialog,
+    QMessageBox,
 )
 from qfluentwidgets import (
     StrongBodyLabel,
     BodyLabel,
     CheckBox,
     ComboBox,
+    InfoBar,
+    InfoBarPosition,
     LineEdit,
     PushButton,
     ScrollArea,
@@ -21,29 +24,15 @@ from qfluentwidgets import (
     Theme,
 )
 
-if TYPE_CHECKING:
-    from qfluentwidgets import Slider, SpinBox
-
-from ..core.models import (
-    ScaleMode,
-    SCALE_MODE_LABELS,
-    WatermarkMode,
-    WM_MODE_LABELS,
-    QUALITY_TIERS,
-)
 from ..core.config import Config
-from .widget_helpers import make_combo_row, make_slider_row
 from .style import PANEL_BG, TransparentCard
+from ..core.logger import get_log_path, set_console_enabled, is_console_enabled
+import shutil
 
 
 class SoftwareSettingsPanel(QWidget):
 
     _theme_combo: ComboBox
-    _scale_combo: ComboBox
-    _quality_combo: ComboBox
-    _wm_mode_combo: ComboBox
-    _wm_size_slider: Slider
-    _wm_size_spin: SpinBox
     _output_dir: LineEdit
     _suffix_edit: LineEdit
     _overwrite_cb: CheckBox
@@ -101,38 +90,6 @@ class SoftwareSettingsPanel(QWidget):
 
         root_layout.addWidget(c1)
 
-        c2 = TransparentCard()
-        c2_layout = QVBoxLayout(c2)
-        c2_layout.setContentsMargins(16, 12, 16, 16)
-        c2_layout.setSpacing(14)
-        c2_layout.addWidget(StrongBodyLabel("默认处理参数"))
-
-        row, self._scale_combo = make_combo_row(
-            "默认缩放模式",
-            list(ScaleMode),
-            SCALE_MODE_LABELS,
-            ScaleMode.FILL_CROP,
-        )
-        c2_layout.addLayout(row)
-
-        row, self._quality_combo = self._make_quality_row()
-        c2_layout.addLayout(row)
-
-        row, self._wm_mode_combo = make_combo_row(
-            "默认水印位置",
-            list(WatermarkMode),
-            WM_MODE_LABELS,
-            WatermarkMode.AUTO,
-        )
-        c2_layout.addLayout(row)
-
-        row, self._wm_size_slider, self._wm_size_spin = make_slider_row(
-            "默认水印尺寸阈值", 100, 1000, 500, "px"
-        )
-        c2_layout.addLayout(row)
-
-        root_layout.addWidget(c2)
-
         c3 = TransparentCard()
         c3_layout = QVBoxLayout(c3)
         c3_layout.setContentsMargins(16, 12, 16, 16)
@@ -151,26 +108,61 @@ class SoftwareSettingsPanel(QWidget):
 
         root_layout.addWidget(c3)
 
+        c4 = TransparentCard()
+        c4_layout = QVBoxLayout(c4)
+        c4_layout.setContentsMargins(16, 12, 16, 16)
+        c4_layout.setSpacing(14)
+        c4_layout.addWidget(StrongBodyLabel("日志"))
+
+        self._log_enable_cb = CheckBox("在终端中输出日志")
+        self._log_enable_cb.setChecked(False)
+        self._log_enable_cb.stateChanged.connect(self._on_log_toggle)
+        c4_layout.addWidget(self._log_enable_cb)
+
+        log_export_row = QHBoxLayout()
+        log_export_row.setSpacing(8)
+        log_path = str(get_log_path())
+        log_label = BodyLabel(log_path if len(log_path) < 50 else "..." + log_path[-47:])
+        log_label.setProperty("hint", True)
+        log_label.setWordWrap(False)
+        log_export_row.addWidget(log_label, 1)
+        export_btn = PushButton("导出日志")
+        export_btn.clicked.connect(self._on_export_log)
+        log_export_row.addWidget(export_btn)
+        c4_layout.addLayout(log_export_row)
+
+        root_layout.addWidget(c4)
+
+        c5 = TransparentCard()
+        c5_layout = QVBoxLayout(c5)
+        c5_layout.setContentsMargins(16, 12, 16, 16)
+        c5_layout.setSpacing(14)
+        c5_layout.addWidget(StrongBodyLabel("数据管理"))
+
+        data_btn_row = QHBoxLayout()
+        data_btn_row.setSpacing(8)
+
+        clear_cache_btn = PushButton("清除缓存")
+        clear_cache_btn.clicked.connect(self._on_clear_cache)
+        data_btn_row.addWidget(clear_cache_btn)
+
+        reset_btn = PushButton("重置设置")
+        reset_btn.setStyleSheet(
+            "PushButton { color: #E74C3C; }"
+            "PushButton:hover { color: #C0392B; }"
+        )
+        reset_btn.clicked.connect(self._on_reset_settings)
+        data_btn_row.addWidget(reset_btn)
+
+        data_btn_row.addStretch()
+        c5_layout.addLayout(data_btn_row)
+        root_layout.addWidget(c5)
+
         root_layout.addStretch()
 
         scroll.setWidget(root)
         scroll.enableTransparentBackground()
         layout.addWidget(scroll, 1)
-
-    def _make_quality_row(self):
-        row = QHBoxLayout()
-        row.setSpacing(12)
-        lbl = BodyLabel("默认输出质量")
-        lbl.setFixedWidth(150)
-        row.addWidget(lbl)
-
-        combo = ComboBox()
-        for t in QUALITY_TIERS:
-            display = f"{t.name} — {t.hint}" if t.hint else f"{t.name} (DPI={t.dpi}, 质量={t.jpeg})"
-            combo.addItem(display, userData=(t.dpi, t.jpeg))
-        combo.setCurrentIndex(3)
-        row.addWidget(combo, 1)
-        return row, combo
 
     def _make_output_dir_row(self):
         row = QHBoxLayout()
@@ -214,33 +206,58 @@ class SoftwareSettingsPanel(QWidget):
         if path:
             self._output_dir.setText(path)
 
-    @property
-    def default_scale_mode(self) -> ScaleMode:
-        val = self._scale_combo.currentData()
-        if isinstance(val, ScaleMode):
-            return val
-        return ScaleMode.FILL_CROP
+    def _on_log_toggle(self, state):
+        set_console_enabled(bool(state))
+        self._cfg.set("consoleLogEnabled", bool(state))
 
-    @property
-    def default_wm_mode(self) -> WatermarkMode:
-        val = self._wm_mode_combo.currentData()
-        if isinstance(val, WatermarkMode):
-            return val
-        return WatermarkMode.AUTO
+    def _on_export_log(self):
+        src = str(get_log_path())
+        path, _ = QFileDialog.getSaveFileName(
+            self, "导出日志", "rcsw.log", "日志文件 (*.log);;所有文件 (*)"
+        )
+        if path:
+            try:
+                shutil.copy2(src, path)
+            except Exception:
+                pass
 
-    @property
-    def default_max_wm_size(self) -> int:
-        return self._wm_size_slider.value()
+    def _on_clear_cache(self):
+        reply = QMessageBox.question(
+            self, "清除缓存",
+            "确定要清除缓存吗？\n这将删除日志文件和临时数据。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            log_file = get_log_path()
+            if log_file.exists():
+                log_file.unlink()
+            for i in range(1, 4):
+                roll = log_file.with_suffix(f".log.{i}")
+                if roll.exists():
+                    roll.unlink()
+        except Exception:
+            pass
+        InfoBar.success(
+            title="已清除", content="缓存数据已清除",
+            parent=self.window(), position=InfoBarPosition.TOP, duration=3000,
+        )
 
-    @property
-    def default_quality_dpi(self) -> int:
-        data = self._quality_combo.currentData()
-        return data[0] if data else 200
-
-    @property
-    def default_quality_jpeg(self) -> int:
-        data = self._quality_combo.currentData()
-        return data[1] if data else 90
+    def _on_reset_settings(self):
+        reply = QMessageBox.warning(
+            self, "重置设置",
+            "确定要重置所有设置吗？\n所有自定义设置将恢复为默认值，此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self._cfg.clear_all()
+        self.load()
+        InfoBar.success(
+            title="已重置", content="所有设置已恢复为默认值",
+            parent=self.window(), position=InfoBarPosition.TOP, duration=3000,
+        )
 
     @property
     def default_output_dir(self) -> str:
@@ -265,10 +282,6 @@ class SoftwareSettingsPanel(QWidget):
     def _connect_signals(self):
         c = self._cfg
         self._theme_combo.currentIndexChanged.connect(self._on_theme_changed)
-        self._scale_combo.currentIndexChanged.connect(lambda: c.set("defaultScaleMode", self.default_scale_mode.value))
-        self._quality_combo.currentIndexChanged.connect(lambda: c.set("defaultQualityIndex", self._quality_combo.currentIndex()))
-        self._wm_mode_combo.currentIndexChanged.connect(lambda: c.set("defaultWmMode", self.default_wm_mode.value))
-        self._wm_size_slider.valueChanged.connect(lambda v: c.set("defaultWmSize", v))
         self._output_dir.textChanged.connect(lambda t: c.set("defaultOutputDir", t))
         self._suffix_edit.textChanged.connect(lambda t: c.set("defaultOutputSuffix", t))
         self._overwrite_cb.stateChanged.connect(lambda v: c.set("overwriteExisting", bool(v)))
@@ -279,29 +292,23 @@ class SoftwareSettingsPanel(QWidget):
         c = self._cfg
         theme = self._theme_combo.currentData()
         c.set("theme", theme.value if isinstance(theme, Theme) else Theme.LIGHT.value)
-        c.set("defaultScaleMode", self.default_scale_mode.value)
-        c.set("defaultQualityIndex", self._quality_combo.currentIndex())
-        c.set("defaultWmMode", self.default_wm_mode.value)
-        c.set("defaultWmSize", self.default_max_wm_size)
         c.set("defaultOutputDir", self.default_output_dir)
         c.set("defaultOutputSuffix", self.output_suffix)
         c.set("overwriteExisting", self.overwrite_existing)
         c.set("openFolderAfter", self.open_folder_after)
         c.set("minimizeToTray", self.minimize_to_tray)
+        c.set("consoleLogEnabled", self._log_enable_cb.isChecked())
 
     def load(self):
         c = self._cfg
 
         self._theme_combo.blockSignals(True)
-        self._scale_combo.blockSignals(True)
-        self._quality_combo.blockSignals(True)
-        self._wm_mode_combo.blockSignals(True)
-        self._wm_size_slider.blockSignals(True)
         self._output_dir.blockSignals(True)
         self._suffix_edit.blockSignals(True)
         self._overwrite_cb.blockSignals(True)
         self._open_folder_cb.blockSignals(True)
         self._minimize_tray_cb.blockSignals(True)
+        self._log_enable_cb.blockSignals(True)
 
         theme_val = c.get("theme", Theme.LIGHT.value)
         for i in range(self._theme_combo.count()):
@@ -310,37 +317,22 @@ class SoftwareSettingsPanel(QWidget):
                 self._theme_combo.setCurrentIndex(i)
                 break
 
-        mode = c.get("defaultScaleMode", ScaleMode.FILL_CROP.value)
-        for i in range(self._scale_combo.count()):
-            d = self._scale_combo.itemData(i)
-            if isinstance(d, ScaleMode) and d.value == mode:
-                self._scale_combo.setCurrentIndex(i)
-                break
-
-        idx = int(c.get("defaultQualityIndex", 3))
-        self._quality_combo.setCurrentIndex(max(0, min(idx, self._quality_combo.count() - 1)))
-
-        mode = c.get("defaultWmMode", WatermarkMode.AUTO.value)
-        for i in range(self._wm_mode_combo.count()):
-            d = self._wm_mode_combo.itemData(i)
-            if isinstance(d, WatermarkMode) and d.value == mode:
-                self._wm_mode_combo.setCurrentIndex(i)
-                break
-
-        self._wm_size_slider.setValue(int(c.get("defaultWmSize", 500)))
         self._output_dir.setText(c.get("defaultOutputDir", ""))
         self._suffix_edit.setText(c.get("defaultOutputSuffix", "_RCSW"))
         self._overwrite_cb.setChecked(bool(c.get("overwriteExisting", False)))
         self._open_folder_cb.setChecked(bool(c.get("openFolderAfter", False)))
         self._minimize_tray_cb.setChecked(bool(c.get("minimizeToTray", False)))
 
+        log_enabled = c.get("consoleLogEnabled", False)
+        if not isinstance(log_enabled, bool):
+            log_enabled = False
+        self._log_enable_cb.setChecked(log_enabled)
+        set_console_enabled(log_enabled)
+
         self._theme_combo.blockSignals(False)
-        self._scale_combo.blockSignals(False)
-        self._quality_combo.blockSignals(False)
-        self._wm_mode_combo.blockSignals(False)
-        self._wm_size_slider.blockSignals(False)
         self._output_dir.blockSignals(False)
         self._suffix_edit.blockSignals(False)
         self._overwrite_cb.blockSignals(False)
         self._open_folder_cb.blockSignals(False)
         self._minimize_tray_cb.blockSignals(False)
+        self._log_enable_cb.blockSignals(False)

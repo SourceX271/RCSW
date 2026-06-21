@@ -69,6 +69,9 @@ class ProcessingWorker(QThread):
         return out_path
 
     def run(self):
+        _log.info("开始处理 %d 个文件, DPI=%d, JPEG=%d, 缩放=%s",
+                   len(self._file_paths), self._dpi, self._jpeg_quality,
+                   self._scale_mode.value)
         success_files = []
         error_files = []
         total_pages_all = 0
@@ -139,6 +142,10 @@ class ProcessingWorker(QThread):
                 out_path = self._resolve_output_path(base_name)
                 new_doc.save(out_path, deflate=True, garbage=4, clean=True)
                 success_files.append((fp, out_path))
+                out_size = os.path.getsize(out_path) / (1024 * 1024)
+                _log.info("已保存: %s -> %s (%.1f MB, %d 页)",
+                          os.path.basename(fp), os.path.basename(out_path),
+                          out_size, doc.page_count)
 
             except Exception as e:
                 if self.isInterruptionRequested():
@@ -161,4 +168,6 @@ class ProcessingWorker(QThread):
                 except Exception:
                     pass
 
+        _log.info("处理完成: 成功%d, 失败%d, 输出目录=%s",
+                  len(success_files), len(error_files), self._output_dir)
         self.finished.emit(success_files, error_files, self._output_dir)

@@ -76,6 +76,10 @@ class Config:
     def get_all(self) -> dict:
         return dict(self._data)
 
+    def clear_all(self) -> None:
+        self._data = {}
+        self.save()
+
     @property
     def path(self) -> Path:
         return self._path

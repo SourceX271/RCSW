@@ -6,6 +6,9 @@ from typing import Callable, List, Set
 import fitz
 
 from .models import WatermarkMode
+from .logger import get_logger
+
+_log = get_logger("detector")
 
 
 def detect_watermarks(
@@ -39,7 +42,13 @@ def detect_watermarks(
     if wm_mode == WatermarkMode.AUTO and page_count > 1:
         all_candidates = _filter_by_xref_consistency(all_imgs, all_candidates)
 
-    return [set(candidates) for candidates in all_candidates]
+    result = [set(candidates) for candidates in all_candidates]
+    _log.debug(
+        "检测完成: %d页, 模式=%s, 最大尺寸=%d, 共%d个水印",
+        page_count, wm_mode.value, max_wm_size,
+        sum(len(s) for s in result),
+    )
+    return result
 
 
 def _filter_by_size(imgs: list[tuple], max_wm_size: int) -> list[int]:

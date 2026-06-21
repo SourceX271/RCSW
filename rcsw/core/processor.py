@@ -6,6 +6,9 @@ import fitz
 from PIL import Image
 
 from .models import ScaleMode
+from .logger import get_logger
+
+_log = get_logger("processor")
 
 
 def scale_image(
@@ -140,6 +143,7 @@ def process_page(
             main_img_info = img
 
     if main_img_info is None:
+        _log.debug("未找到主图片 (page %d)", page.number)
         return None
 
     img_data = doc.extract_image(main_img_info[0])
