@@ -22,7 +22,7 @@
   </defs>
 
   <!-- 背景圆角矩形（边缘渐变银色，中间渐变深灰色带网格） -->
-  <rect x="10" y="10" width="180" height="180" rx="32" ry="32" fill="url(#darkGray)" stroke="url(#silver)" stroke-width="4" filter="url(#shadow)" />
+  <rect x="10" y="10" width="180" height="180" rx="32" ry="32" fill="url(#darkGray)" stroke-width="4" filter="url(#shadow)" />
   
 
 
@@ -36,7 +36,7 @@
              C 140,65 122,45 100,45 Z" 
           fill="none" 
           stroke="url(#silver)" 
-          stroke-width="12" 
+          stroke-width="18" 
           stroke-linecap="round" 
           stroke-linejoin="round" />
   </g>

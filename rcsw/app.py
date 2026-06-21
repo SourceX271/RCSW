@@ -26,7 +26,20 @@ sys.excepthook = _exception_hook
 
 
 def _icon_path() -> Path:
+<<<<<<< HEAD
     return Path(__file__).resolve().parent / "resources" / "icon.svg"
+=======
+    base = Path(__file__).resolve().parent / "resources"
+    if sys.platform == "darwin":
+        candidates = ("icon.icns", "icon.png")
+    else:
+        candidates = ("icon.ico", "icon.png", "icon.svg")
+    for name in candidates:
+        p = base / name
+        if p.exists():
+            return p
+    return base / "icon.png"
+>>>>>>> 7dd5c6616361f1926b4271f84dc69fb90f7a33e6
 
 
 def main():
