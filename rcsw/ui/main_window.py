@@ -52,6 +52,14 @@ class MainWindow(FluentWindow):
         self._connect_signals()
         self._setup_tray()
 
+        self._taskbar_progress = None
+        if sys.platform == "win32":
+            try:
+                from ..core.windows_taskbar import TaskbarProgress
+                self._taskbar_progress = TaskbarProgress(int(self.winId()))
+            except Exception:
+                pass
+
         if sys.platform == "darwin":
             self.titleBar.hBoxLayout.setContentsMargins(8, 0, 0, 0)
             self.navigationInterface.panel.vBoxLayout.setContentsMargins(0, 28, 0, 5)
@@ -220,14 +228,35 @@ class MainWindow(FluentWindow):
         )
         self._worker.progress.connect(self._on_progress)
         self._worker.finished.connect(self._on_finished)
+        self._worker.file_started.connect(self._on_file_started)
+        self._worker.file_progress.connect(self._on_file_progress)
+        self._worker.file_finished.connect(self._on_file_done)
         self._worker.start()
 
     def _on_progress(self, current: int, total: int, filename: str):
         self._file_panel.update_progress(current, total, filename)
+        if hasattr(self, '_taskbar_progress') and self._taskbar_progress:
+            self._taskbar_progress.set_value(int(current / total * 100) if total > 0 else 0, 100)
+            self._taskbar_progress.set_normal()
+
+    def _on_file_started(self, index: int, filename: str, total_pages: int):
+        pass
+
+    def _on_file_progress(self, index: int, current_page: int, total_pages: int):
+        self._file_panel.set_file_progress(index, current_page, total_pages)
+
+    def _on_file_done(self, index: int, output_path: str):
+        self._file_panel.set_file_done(index)
 
     def _on_finished(self, success: list, errors: list, output_dir: str = ""):
         self._worker = None
         self._file_panel.set_processing(False)
+        self._file_panel.clear_file_progress()
+        if self._taskbar_progress:
+            try:
+                self._taskbar_progress.hide()
+            except Exception:
+                pass
 
         if success:
             parts = []

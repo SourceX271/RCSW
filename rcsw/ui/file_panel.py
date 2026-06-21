@@ -124,10 +124,26 @@ class _FileItemDelegate(QStyledItemDelegate):
                              Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                              date_text)
 
+        progress_val = index.data(Qt.ItemDataRole.UserRole + 6)
+        if progress_val is not None and progress_val >= 0:
+            bar_h = 4
+            bar_y = r.bottom() - bar_h - 3
+            bar_x = margin
+            bar_w = right_w - margin
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor("#20000000" if not is_selected else "#30FFFFFF"))
+            painter.drawRoundedRect(bar_x, bar_y, bar_w, bar_h, 2, 2)
+            if progress_val > 0:
+                painter.setBrush(QColor("#0078D4"))
+                fill_w = int(bar_w * progress_val / 100)
+                painter.drawRoundedRect(bar_x, bar_y, fill_w, bar_h, 2, 2)
+
         painter.restore()
 
     def sizeHint(self, option, index):
-        return QSize(200, 52)
+        progress_val = index.data(Qt.ItemDataRole.UserRole + 6)
+        h = 56 if (progress_val is not None and progress_val >= 0) else 52
+        return QSize(200, h)
 
 
 class FilePanel(QWidget):
@@ -482,3 +498,30 @@ class FilePanel(QWidget):
         ]
         if paths:
             self.add_files(paths)
+
+    def set_file_progress(self, file_index: int, current_page: int, total_pages: int):
+        pct = int(current_page / total_pages * 100) if total_pages > 0 else 0
+        item = self._list.item(file_index) if file_index < self._list.count() else None
+        if item:
+            item.setData(Qt.ItemDataRole.UserRole + 6, pct)
+            item.setSizeHint(QSize(200, 56))
+            idx = self._list.indexFromItem(item)
+            if idx.isValid():
+                self._list.update(idx)
+
+    def set_file_done(self, file_index: int):
+        item = self._list.item(file_index) if file_index < self._list.count() else None
+        if item:
+            item.setData(Qt.ItemDataRole.UserRole + 6, -1)
+            item.setSizeHint(QSize(200, 52))
+            idx = self._list.indexFromItem(item)
+            if idx.isValid():
+                self._list.update(idx)
+
+    def clear_file_progress(self):
+        for i in range(self._list.count()):
+            item = self._list.item(i)
+            if item:
+                item.setData(Qt.ItemDataRole.UserRole + 6, -1)
+                item.setSizeHint(QSize(200, 52))
+        self._list.viewport().update()

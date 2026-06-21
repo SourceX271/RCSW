@@ -17,6 +17,9 @@ _log = get_logger("worker")
 class ProcessingWorker(QThread):
     progress = Signal(int, int, str)
     finished = Signal(list, list, str)
+    file_started = Signal(int, str, int)
+    file_progress = Signal(int, int, int)
+    file_finished = Signal(int, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -106,6 +109,8 @@ class ProcessingWorker(QThread):
                     cancel_fn=self.isInterruptionRequested,
                 )
 
+                self.file_started.emit(fi, os.path.basename(fp), doc.page_count)
+
                 new_doc = fitz.open()
                 for pi in range(doc.page_count):
                     if self.isInterruptionRequested():
@@ -134,6 +139,7 @@ class ProcessingWorker(QThread):
 
                     global_idx += 1
                     self.progress.emit(global_idx, total_pages_all, os.path.basename(fp))
+                    self.file_progress.emit(fi, pi + 1, doc.page_count)
 
                 if self.isInterruptionRequested():
                     break
@@ -142,6 +148,7 @@ class ProcessingWorker(QThread):
                 out_path = self._resolve_output_path(base_name)
                 new_doc.save(out_path, deflate=True, garbage=4, clean=True)
                 success_files.append((fp, out_path))
+                self.file_finished.emit(fi, out_path)
                 out_size = os.path.getsize(out_path) / (1024 * 1024)
                 _log.info("已保存: %s -> %s (%.1f MB, %d 页)",
                           os.path.basename(fp), os.path.basename(out_path),
