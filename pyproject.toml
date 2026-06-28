@@ -9,6 +9,7 @@ dependencies = [
     "pyside6-fluent-widgets>=1.5",
     "pymupdf>=1.23",
     "pillow>=10.0",
+    "nuitka>=4.1.3",
 ]
 
 [project.scripts]

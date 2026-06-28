@@ -17,7 +17,6 @@ uv run python -m nuitka --standalone --windows-console-mode=disable `
   --product-version="0.4.0" `
   --file-description="Remove CamScanner Watermark" `
   --copyright="GNU General Public License v3.0" `
-  --lto=yes `
   --enable-plugin=pyside6 `
   --include-package=rcsw `
   --include-package-data=rcsw `
