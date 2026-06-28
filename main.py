@@ -55,19 +55,20 @@ if __name__ == "__main__":
 
         def on_finished(success, errors):
             worker_done[0] = True
-            if tray.supportsMessages():
-                if errors:
-                    tray.showMessage(
-                        "RCSW",
-                        f"处理完成: 成功 {len(success)}, 失败 {len(errors)}",
-                        QSystemTrayIcon.MessageIcon.Warning, 5000,
-                    )
-                else:
-                    tray.showMessage(
-                        "RCSW",
-                        f"处理完成: {len(success)} 个文件",
-                        QSystemTrayIcon.MessageIcon.Information, 5000,
-                    )
+            if not tray.supportsMessages():
+                return
+            if errors:
+                QTimer.singleShot(0, lambda: tray.showMessage(
+                    "RCSW",
+                    f"处理完成: 成功 {len(success)}, 失败 {len(errors)}",
+                    QSystemTrayIcon.MessageIcon.Warning, 5000,
+                ))
+            else:
+                QTimer.singleShot(0, lambda: tray.showMessage(
+                    "RCSW",
+                    f"处理完成: {len(success)} 个文件",
+                    QSystemTrayIcon.MessageIcon.Information, 5000,
+                ))
 
         class Worker(QThread):
             def run(self):

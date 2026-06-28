@@ -1,5 +1,6 @@
 uv run python -m nuitka --standalone --windows-console-mode=disable `
   --output-filename=rcsw.exe `
+  --lto=yes `
   --enable-plugin=pyside6 `
   --include-package=rcsw `
   --include-package-data=rcsw `

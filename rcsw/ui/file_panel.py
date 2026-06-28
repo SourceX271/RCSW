@@ -5,7 +5,7 @@ import sys
 from datetime import datetime
 
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QColor, QPainter, QFont, QPalette
+from PySide6.QtGui import QColor, QPainter, QFont, QFontMetrics, QPalette
 from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
@@ -65,15 +65,12 @@ class _FileItemDelegate(QStyledItemDelegate):
             painter.fillRect(r, _COLOR_HOVER)
         elif index.row() % 2 == 0:
             painter.fillRect(r, _COLOR_EVEN_ROW)
-        else:
-            painter.fillRect(r, _COLOR_TRANSPARENT)
 
         if not is_selected:
             sep_y = r.bottom() - 1
             painter.setPen(_COLOR_SEPARATOR)
             painter.drawLine(r.left() + 12, sep_y, r.right() - 12, sep_y)
 
-        fm = option.fontMetrics
         name = index.data(Qt.ItemDataRole.DisplayRole)
         pages = index.data(Qt.ItemDataRole.UserRole + 1)
         size_mb = index.data(Qt.ItemDataRole.UserRole + 2)
@@ -96,7 +93,8 @@ class _FileItemDelegate(QStyledItemDelegate):
         name_font.setPointSize(10)
         name_font.setWeight(QFont.Weight.Medium)
         painter.setFont(name_font)
-        name_elided = fm.elidedText(name, Qt.TextElideMode.ElideMiddle, right_w - margin)
+        name_fm = QFontMetrics(painter.font())
+        name_elided = name_fm.elidedText(name, Qt.TextElideMode.ElideMiddle, right_w - margin)
         painter.drawText(margin, r.top() + 6, right_w - margin, 20,
                          Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name_elided)
 
@@ -121,8 +119,9 @@ class _FileItemDelegate(QStyledItemDelegate):
         path_font.setPointSize(8)
         painter.setFont(path_font)
         date_reserved = 320 if (ctime and mtime) else (180 if (ctime or mtime) else 0)
-        path_elided = fm.elidedText(path, Qt.TextElideMode.ElideMiddle,
-                                     right_w - margin - date_reserved)
+        path_fm = QFontMetrics(painter.font())
+        path_elided = path_fm.elidedText(path, Qt.TextElideMode.ElideMiddle,
+                                      right_w - margin - date_reserved)
         painter.drawText(margin, r.top() + 28, right_w - margin, 16,
                          Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, path_elided)
 
@@ -445,7 +444,6 @@ class FilePanel(QWidget):
             item.setData(Qt.ItemDataRole.UserRole + 3, valid)
             item.setData(Qt.ItemDataRole.UserRole + 4, mtime)
             item.setData(Qt.ItemDataRole.UserRole + 5, ctime)
-            item.setSizeHint(QSize(200, 62))
             self._list.addItem(item)
             if valid:
                 self._total_pages += pages

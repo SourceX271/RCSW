@@ -273,11 +273,6 @@ class SettingsPanel(QWidget):
         c.set("outputDir", self.output_dir)
         c.set("outputSuffix", self.output_suffix)
 
-    def _default_quality_tier(self) -> QualityTier:
-        ci = self._cfg.get("defaultQualityIndex", 3)
-        idx = max(0, min(int(ci), len(QUALITY_TIERS) - 1))
-        return QUALITY_TIERS[idx]
-
     def load(self):
         c = self._cfg
         if self._scale_combo:

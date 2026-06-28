@@ -45,6 +45,8 @@ class MainWindow(FluentWindow):
         self._about_panel = AboutPanel()
 
         self._worker: ProcessingWorker | None = None
+        self._shutting_down = False
+        self._close_minimizes = False
 
         self._window_focused = True
 
@@ -227,16 +229,12 @@ class MainWindow(FluentWindow):
         )
         self._worker.progress.connect(self._on_progress)
         self._worker.finished.connect(self._on_finished)
-        self._worker.file_started.connect(self._on_file_started)
         self._worker.file_progress.connect(self._on_file_progress)
         self._worker.file_finished.connect(self._on_file_done)
         self._worker.start()
 
     def _on_progress(self, current: int, total: int, filename: str):
         self._file_panel.update_progress(current, total, filename)
-
-    def _on_file_started(self, index: int, filename: str, total_pages: int):
-        pass
 
     def _on_file_progress(self, index: int, current_page: int, total_pages: int):
         self._file_panel.set_file_progress(index, current_page, total_pages)
@@ -246,6 +244,15 @@ class MainWindow(FluentWindow):
 
     def _on_finished(self, success: list, errors: list, output_dir: str = ""):
         self._worker = None
+
+        if self._close_minimizes:
+            self._close_minimizes = False
+            self.hide()
+            return
+        if self._shutting_down:
+            self._finalize_close()
+            return
+
         self._file_panel.set_processing(False)
         use_system_notify = Config.instance().get("useSystemNotification", False)
         use_tray = use_system_notify and not self._window_focused and hasattr(self, '_tray')
@@ -309,18 +316,10 @@ class MainWindow(FluentWindow):
         if self._worker and self._worker.isRunning():
             _log.info("Waiting for worker thread to finish...")
             self._file_panel.update_status("正在停止处理任务...")
-            try:
-                self._worker.finished.disconnect(self._on_finished)
-            except (TypeError, RuntimeError):
-                pass
-            self._worker.finished.connect(self._on_worker_shutdown)
+            self._shutting_down = True
             self._worker.requestInterruption()
             return False
         return True
-
-    def _on_worker_shutdown(self, _success, _errors, _output_dir):
-        self._worker = None
-        self._finalize_close()
 
     def _finalize_close(self):
         self._save_all_settings()
@@ -335,13 +334,7 @@ class MainWindow(FluentWindow):
         )
         if minimize_to_tray:
             if self._worker and self._worker.isRunning():
-                try:
-                    self._worker.finished.disconnect(self._on_finished)
-                except (TypeError, RuntimeError):
-                    pass
-                self._worker.finished.connect(
-                    lambda *_: self.hide()
-                )
+                self._close_minimizes = True
                 self._worker.requestInterruption()
             else:
                 self.hide()

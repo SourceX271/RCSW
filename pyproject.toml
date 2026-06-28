@@ -3,14 +3,13 @@ name = "rcsw"
 version = "0.3.0"
 description = "Remove CamScanner Watermark"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
-    "pillow>=12.2.0",
-    "pymupdf>=1.27.2.3",
-    "pyside6>=6.11.1",
-    "pyside6-fluent-widgets[full]>=1.11.2",
+    "pyside6>=6.5",
+    "pyside6-fluent-widgets>=1.5",
+    "pymupdf>=1.23",
+    "pillow>=10.0",
 ]
 
-[[tool.uv.index]]
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-default = true
+[project.scripts]
+rcsw = "rcsw.app:main"

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import shutil
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -23,8 +23,6 @@ from qfluentwidgets import (
     setTheme,
     Theme,
 )
-
-import shutil
 
 from ..core.config import Config
 from .style import PANEL_BG, TransparentCard

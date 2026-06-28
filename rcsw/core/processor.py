@@ -106,11 +106,6 @@ def to_rgb(pil_img: Image.Image) -> Image.Image:
         background = Image.new("RGB", pil_img.size, (255, 255, 255))
         background.paste(pil_img, mask=pil_img.split()[-1])
         return background
-    if pil_img.mode == "P":
-        pil_img = pil_img.convert("RGBA")
-        background = Image.new("RGB", pil_img.size, (255, 255, 255))
-        background.paste(pil_img, mask=pil_img.split()[-1])
-        return background
     if pil_img.mode == "CMYK":
         pil_img = pil_img.convert("RGB")
         return pil_img

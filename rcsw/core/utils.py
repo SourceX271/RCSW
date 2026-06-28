@@ -21,7 +21,7 @@ def resolve_output_path(dir_: str, base: str, suffix: str, overwrite: bool) -> s
         out = os.path.join(dir_, f"{base}{suffix}_{counter}.pdf")
         counter += 1
         if counter > 9999:
-            break
+            raise FileExistsError(f"Too many output files: {out}")
     return out
 
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from typing import Callable
 
+import fitz
+
 from .core.config import Config
 from .core.logger import get_logger
 from .core.models import ScaleMode, WatermarkMode
@@ -37,8 +39,6 @@ def run_silent(
         wm_mode = WatermarkMode(wm_mode_str)
     except ValueError:
         wm_mode = WatermarkMode.AUTO
-
-    import fitz
 
     success_files = []
     error_files = []
