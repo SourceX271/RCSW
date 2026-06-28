@@ -29,6 +29,26 @@ RCSW 是一款专门用于去除「扫描全能王」（CamScanner）生成 PDF 
 | 图像处理 | Pillow |
 | 构建 | Nuitka |
 
+### 依赖树状图
+```
+rcsw v0.3.0
+├── nuitka v4.1.3
+├── pillow v12.2.0
+├── pymupdf v1.27.2.3
+├── pyside6 v6.11.1
+│   ├── pyside6-addons v6.11.1
+│   │   ├── pyside6-essentials v6.11.1
+│   │   │   └── shiboken6 v6.11.1
+│   │   └── shiboken6 v6.11.1
+│   ├── pyside6-essentials v6.11.1 (*)
+│   └── shiboken6 v6.11.1
+└── pyside6-fluent-widgets v1.11.2
+    ├── darkdetect v0.8.0
+    ├── pyside6 v6.11.1 (*)
+    └── pysidesix-frameless-window v0.8.1
+        └── pywin32 v312
+```
+
 ## 安装和运行
 ### 下载安装包
 1. 点击右侧 Releases 打开发行版页面
@@ -37,17 +57,18 @@ RCSW 是一款专门用于去除「扫描全能王」（CamScanner）生成 PDF 
 
 ### 从源代码运行
 
-安装
+Git 克隆
 ```bash
 git clone https://github.com/SourceX271/RCSW.git
 cd RCSW
-pip install -r requirements.txt
 ```
-
- 运行
-
+安装依赖
 ```bash
-python main.py
+uv sync
+```
+ 运行
+```bash
+uv run main.py
 ```
 
 ## 构建 Windows EXE
