@@ -283,8 +283,12 @@ class SoftwareSettingsPanel(QWidget):
     def _connect_signals(self):
         c = self._cfg
         self._theme_combo.currentIndexChanged.connect(self._on_theme_changed)
-        self._output_dir.textChanged.connect(lambda t: c.set("defaultOutputDir", t))
-        self._suffix_edit.textChanged.connect(lambda t: c.set("defaultOutputSuffix", t))
+        self._output_dir.textChanged.connect(
+            lambda t: (c.set("defaultOutputDir", t), c.set("outputDir", t))
+        )
+        self._suffix_edit.textChanged.connect(
+            lambda t: (c.set("defaultOutputSuffix", t), c.set("outputSuffix", t))
+        )
         self._overwrite_cb.stateChanged.connect(lambda v: c.set("overwriteExisting", bool(v)))
         self._open_folder_cb.stateChanged.connect(lambda v: c.set("openFolderAfter", bool(v)))
         self._minimize_tray_cb.stateChanged.connect(lambda v: c.set("minimizeToTray", bool(v)))
@@ -343,3 +347,6 @@ class SoftwareSettingsPanel(QWidget):
         self._minimize_tray_cb.blockSignals(False)
         self._log_enable_cb.blockSignals(False)
         self._system_notify_cb.blockSignals(False)
+
+        c.set("outputDir", c.get("defaultOutputDir", ""))
+        c.set("outputSuffix", c.get("defaultOutputSuffix", "_RCSW"))

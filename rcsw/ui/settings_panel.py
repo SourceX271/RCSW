@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QEvent
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QHBoxLayout,
-    QLabel,
     QFileDialog,
 )
 from qfluentwidgets import (
@@ -16,8 +15,11 @@ from qfluentwidgets import (
     LineEdit,
     PushButton,
     ScrollArea,
-    SegmentedWidget,
     StrongBodyLabel,
+    SegmentedWidget,
+    Dialog,
+    InfoBar,
+    InfoBarPosition,
 )
 
 from ..core.models import (
@@ -27,27 +29,22 @@ from ..core.models import (
     WM_MODE_LABELS,
     QualityTier,
     QUALITY_TIERS,
-    tier_from_dpi_q,
 )
 from ..core.config import Config
 from .widget_helpers import make_combo_row, make_slider_row
-from .style import ACCENT, hint_color, dot_inactive_color, TIER_LABEL_STYLE, PANEL_BG, TransparentCard
+from .style import PANEL_BG, TransparentCard
 
 
 class SettingsPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("settingsPanel")
-        self._tier_labels: list[QLabel] = []
-        self._dpi_slider: Slider | None = None
-        self._dpi_spin: SpinBox | None = None
-        self._jpeg_slider: Slider | None = None
-        self._jpeg_spin: SpinBox | None = None
+        self._current_tier_idx: int = 3
         self._wm_slider: Slider | None = None
         self._wm_spin: SpinBox | None = None
         self._scale_combo: ComboBox | None = None
         self._wm_mode_combo: ComboBox | None = None
-        self._quality_slider: Slider | None = None
+        self._quality_segment: SegmentedWidget | None = None
         self._output_dir: LineEdit | None = None
         self._output_suffix: LineEdit | None = None
         self._cfg = Config.instance()
@@ -63,15 +60,6 @@ class SettingsPanel(QWidget):
         title = StrongBodyLabel("处理设置")
         title.setObjectName("panelTitle")
         layout.addWidget(title)
-
-        self._mode_switcher = SegmentedWidget()
-        self._mode_switcher.addItem("basic", "基础设置", onClick=None)
-        self._mode_switcher.addItem("advanced", "高级设置", onClick=None)
-        self._mode_switcher.setFixedHeight(36)
-        self._mode_switcher.currentItemChanged.connect(
-            lambda key: self._switch_mode(key)
-        )
-        layout.addWidget(self._mode_switcher)
 
         scroll = ScrollArea()
         scroll.setWidgetResizable(True)
@@ -94,124 +82,82 @@ class SettingsPanel(QWidget):
             "缩放模式", list(ScaleMode), SCALE_MODE_LABELS, ScaleMode.FILL_CROP, 140
         )
         base_layout.addLayout(scale_row)
-        base_layout.addLayout(self._make_quality_slider_row())
-        base_layout.addLayout(self._make_output_dir_row())
-        base_layout.addLayout(self._make_suffix_row())
+        base_layout.addLayout(self._make_quality_segment_row())
 
-        root_layout.addWidget(base_card)
-
-        self._adv_card = TransparentCard()
-        self._adv_card.setObjectName("advCard")
-        adv_layout = QVBoxLayout(self._adv_card)
-        adv_layout.setContentsMargins(16, 12, 16, 16)
-        adv_layout.setSpacing(16)
-
-        sep_label = StrongBodyLabel("高级选项")
-        sep_label.setObjectName("advSectionTitle")
-        adv_layout.addWidget(sep_label)
-
-        self._dpi_row, dpi_slider, dpi_spin = make_slider_row("输出 DPI", 72, 600, 200, "", 140)
-        dpi_slider.valueChanged.connect(self._on_advanced_param_changed)
-        dpi_spin.valueChanged.connect(self._on_advanced_param_changed)
-        self._dpi_slider = dpi_slider
-        self._dpi_spin = dpi_spin
-        adv_layout.addLayout(self._dpi_row)
-
-        self._jpeg_row, jpeg_slider, jpeg_spin = make_slider_row("JPEG 质量", 50, 100, 90, "", 140)
-        jpeg_slider.valueChanged.connect(self._on_advanced_param_changed)
-        jpeg_spin.valueChanged.connect(self._on_advanced_param_changed)
-        self._jpeg_slider = jpeg_slider
-        self._jpeg_spin = jpeg_spin
-        adv_layout.addLayout(self._jpeg_row)
-
-        self._wm_row, self._wm_slider, self._wm_spin = make_slider_row("最大水印尺寸 (px)", 100, 1000, 500, "", 140)
-        adv_layout.addLayout(self._wm_row)
+        self._wm_row, self._wm_slider, self._wm_spin = make_slider_row(
+            "最大水印尺寸 (px)", 100, 1000, 500, "", 140
+        )
+        base_layout.addLayout(self._wm_row)
 
         wm_mode_row, self._wm_mode_combo = make_combo_row(
             "水印位置", list(WatermarkMode), WM_MODE_LABELS, WatermarkMode.AUTO, 140
         )
-        adv_layout.addLayout(wm_mode_row)
+        base_layout.addLayout(wm_mode_row)
 
-        root_layout.addWidget(self._adv_card)
+        base_layout.addLayout(self._make_output_dir_row())
+        base_layout.addLayout(self._make_suffix_row())
+
+        reset_btn = PushButton("恢复默认设置")
+        reset_btn.clicked.connect(self._on_reset_settings)
+        base_layout.addWidget(reset_btn, 0, Qt.AlignmentFlag.AlignRight)
+
+        root_layout.addWidget(base_card)
         root_layout.addStretch()
 
         scroll.setWidget(root)
         scroll.enableTransparentBackground()
         layout.addWidget(scroll, 1)
 
-        self._mode_switcher.blockSignals(True)
-        self._mode_switcher.setCurrentItem("basic")
-        self._mode_switcher.blockSignals(False)
-        self._switch_mode("basic")
+        self._connect_settings()
 
-    def _switch_mode(self, mode: str):
-        is_adv = mode == "advanced"
-        self._adv_card.setVisible(is_adv)
+    def _connect_settings(self):
+        c = self._cfg
+        if self._quality_segment:
+            self._quality_segment.currentItemChanged.connect(
+                lambda key: self._on_quality_changed(int(key))
+            )
+        if self._scale_combo:
+            self._scale_combo.currentIndexChanged.connect(
+                lambda: c.set("scaleMode", self.scale_mode.value)
+            )
+        if self._wm_slider:
+            self._wm_slider.valueChanged.connect(
+                lambda v: c.set("maxWmSize", v)
+            )
+        if self._wm_mode_combo:
+            self._wm_mode_combo.currentIndexChanged.connect(
+                lambda: c.set("wmMode", self.wm_mode.value)
+            )
+        if self._output_dir:
+            self._output_dir.textChanged.connect(
+                lambda t: c.set("outputDir", t)
+            )
+        if self._output_suffix:
+            self._output_suffix.textChanged.connect(
+                lambda t: c.set("outputSuffix", t)
+            )
 
-        if mode == "basic":
-            tier = tier_from_dpi_q(self.dpi, self.jpeg_quality)
-            self._last_quality_tier = tier
-            self._quality_slider.blockSignals(True)
-            self._quality_slider.setValue(self._tier_to_value(tier))
-            self._quality_slider.blockSignals(False)
-
-    def _make_quality_slider_row(self):
+    def _make_quality_segment_row(self):
         row = QHBoxLayout()
         row.setSpacing(12)
         lbl = BodyLabel("输出质量")
         lbl.setFixedWidth(140)
         row.addWidget(lbl)
 
-        container = QVBoxLayout()
-        container.setSpacing(6)
-
-        slider = Slider(Qt.Orientation.Horizontal)
-        slider.setRange(0, 300)
-        slider.setValue(self._tier_to_value(3))
-        slider.setSingleStep(25)
-        slider.setPageStep(75)
-        slider.setObjectName("qualitySlider")
-        slider.installEventFilter(self)
-        container.addWidget(slider)
-
-        dot_row = QHBoxLayout()
-        dot_row.setContentsMargins(6, 0, 6, 2)
-        dot_row.setSpacing(0)
-        self._tier_dots: list[QLabel] = []
-        for i in range(4):
-            dot = QLabel()
-            dot.setFixedSize(12, 12)
-            dot.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            dot.setCursor(Qt.CursorShape.PointingHandCursor)
-            dot.setProperty("tier", i)
-            dot.installEventFilter(self)
-            dot_row.addWidget(dot, 1, Qt.AlignmentFlag.AlignHCenter)
-            self._tier_dots.append(dot)
-        container.addLayout(dot_row)
-
-        label_row = QHBoxLayout()
-        label_row.setContentsMargins(0, 0, 0, 0)
+        segment = SegmentedWidget()
         for i, t in enumerate(QUALITY_TIERS):
-            lbl_text = t.name
-            if t.hint:
-                lbl_text = f"{t.name} ({t.hint})"
-            lbl = QLabel(lbl_text)
-            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setCursor(Qt.CursorShape.PointingHandCursor)
-            lbl.setProperty("tier", i)
-            lbl.installEventFilter(self)
-            label_row.addWidget(lbl, 1)
-            self._tier_labels.append(lbl)
-        container.addLayout(label_row)
-
-        row.addLayout(container, 1)
-
-        slider.valueChanged.connect(self._on_quality_slider_changed)
-        self._quality_slider = slider
-
-        self._update_tier_labels(3)
-        self._update_tier_dots(3)
+            segment.addItem(str(i), t.name, onClick=None)
+        segment.setFixedHeight(36)
+        segment.setCurrentItem(str(self._current_tier_idx))
+        self._quality_segment = segment
+        row.addWidget(segment, 1)
         return row
+
+    def _on_quality_changed(self, tier: int):
+        self._current_tier_idx = tier
+        self._cfg.set("qualityTier", tier)
+        self._cfg.set("dpi", QUALITY_TIERS[tier].dpi)
+        self._cfg.set("jpegQuality", QUALITY_TIERS[tier].jpeg)
 
     def _make_output_dir_row(self):
         row = QHBoxLayout()
@@ -245,99 +191,36 @@ class SettingsPanel(QWidget):
         row.addWidget(self._output_suffix, 1)
         return row
 
-    def _value_to_tier(self, value: int) -> int:
-        return min(3, value // 75)
-
-    def _tier_to_value(self, tier: int) -> int:
-        return tier * 75 + 37
-
-    def _update_tier_labels(self, active: int):
-        for i, lbl in enumerate(self._tier_labels):
-            if i == active:
-                lbl.setStyleSheet(
-                    f"color: {ACCENT}; {TIER_LABEL_STYLE} font-weight: bold;"
-                )
-            else:
-                lbl.setStyleSheet(f"color: {hint_color()}; {TIER_LABEL_STYLE}")
-
-    def _update_tier_dots(self, active: int):
-        for i, dot in enumerate(self._tier_dots):
-            if i == active:
-                dot.setStyleSheet(
-                    f"border-radius: 5px; background-color: {ACCENT};"
-                )
-            else:
-                dot.setStyleSheet(
-                    f"border-radius: 5px; background-color: {dot_inactive_color()};"
-                )
-
-    def _on_quality_slider_changed(self, value: int):
-        tier = self._value_to_tier(value)
-        self._update_tier_labels(tier)
-        self._update_tier_dots(tier)
-
-        if getattr(self, "_last_quality_tier", None) == tier:
-            return
-        self._last_quality_tier = tier
-
-        self._apply_tier(tier)
-
-    def _apply_tier(self, tier: int):
-        t = QUALITY_TIERS[tier]
-        dpi_val, jpg_val = t.dpi, t.jpeg
-
-        if self._dpi_slider:
-            self._dpi_slider.blockSignals(True)
-            self._dpi_slider.setEnabled(dpi_val > 0)
-            if dpi_val > 0:
-                self._dpi_slider.setValue(dpi_val)
-            self._dpi_slider.blockSignals(False)
-        if self._dpi_spin:
-            self._dpi_spin.blockSignals(True)
-            self._dpi_spin.setEnabled(dpi_val > 0)
-            if dpi_val > 0:
-                self._dpi_spin.setValue(dpi_val)
-            self._dpi_spin.blockSignals(False)
-
-        if self._jpeg_slider:
-            self._jpeg_slider.blockSignals(True)
-            self._jpeg_slider.setValue(jpg_val)
-            self._jpeg_slider.blockSignals(False)
-        if self._jpeg_spin:
-            self._jpeg_spin.blockSignals(True)
-            self._jpeg_spin.setValue(jpg_val)
-            self._jpeg_spin.blockSignals(False)
-
-    def _on_advanced_param_changed(self, _value):
-        tier = tier_from_dpi_q(self.dpi, self.jpeg_quality)
-        self._last_quality_tier = tier
-        self._quality_slider.blockSignals(True)
-        self._quality_slider.setValue(self._tier_to_value(tier))
-        self._quality_slider.blockSignals(False)
-        self._update_tier_labels(tier)
-        self._update_tier_dots(tier)
-
     def _on_browse_output(self):
         path = QFileDialog.getExistingDirectory(self, "选择输出目录")
         if path:
             self._output_dir.setText(path)
 
-    def eventFilter(self, watched, event):
-        if event.type() == QEvent.Type.MouseButtonRelease:
-            tier = watched.property("tier")
-            if tier is not None and isinstance(tier, int):
-                self._quality_slider.setValue(self._tier_to_value(tier))
-                return True
-        return super().eventFilter(watched, event)
+    def _on_reset_settings(self):
+        dlg = Dialog("恢复默认", "确定要恢复处理设置为默认值吗？", self.window())
+        dlg.setTitleBarVisible(False)
+        dlg.yesSignal.connect(self._do_reset_settings)
+        dlg.show()
 
-    def changeEvent(self, event):
-        if event.type() == QEvent.Type.StyleChange:
-            if hasattr(self, '_tier_labels') and self._tier_labels:
-                qv = self._quality_slider.value() if self._quality_slider else 112
-                tier = self._value_to_tier(qv)
-                self._update_tier_labels(tier)
-                self._update_tier_dots(tier)
-        super().changeEvent(event)
+    def _do_reset_settings(self):
+        c = self._cfg
+        defaults = {
+            "scaleMode": ScaleMode.FILL_CROP.value,
+            "qualityTier": 3,
+            "dpi": QUALITY_TIERS[3].dpi,
+            "jpegQuality": QUALITY_TIERS[3].jpeg,
+            "maxWmSize": 500,
+            "wmMode": WatermarkMode.AUTO.value,
+            "outputDir": "",
+            "outputSuffix": "_RCSW",
+        }
+        for k, v in defaults.items():
+            c.set(k, v)
+        self.load()
+        InfoBar.success(
+            title="已恢复", content="处理设置已恢复为默认值",
+            parent=self.window(), position=InfoBarPosition.TOP, duration=3000,
+        )
 
     def showEvent(self, event):
         self.load()
@@ -345,13 +228,11 @@ class SettingsPanel(QWidget):
 
     @property
     def dpi(self) -> int:
-        if self._quality_slider and self._value_to_tier(self._quality_slider.value()) == 3:
-            return 0
-        return self._dpi_slider.value() if self._dpi_slider else 200
+        return QUALITY_TIERS[self._current_tier_idx].dpi
 
     @property
     def jpeg_quality(self) -> int:
-        return self._jpeg_slider.value() if self._jpeg_slider else 90
+        return QUALITY_TIERS[self._current_tier_idx].jpeg
 
     @property
     def max_wm_size(self) -> int:
@@ -384,8 +265,7 @@ class SettingsPanel(QWidget):
     def save_to_config(self):
         c = self._cfg
         c.set("scaleMode", self.scale_mode.value)
-        qv = self._quality_slider.value() if self._quality_slider else 112
-        c.set("qualitySliderValue", qv)
+        c.set("qualityTier", self._current_tier_idx)
         c.set("dpi", self.dpi)
         c.set("jpegQuality", self.jpeg_quality)
         c.set("maxWmSize", self.max_wm_size)
@@ -394,7 +274,7 @@ class SettingsPanel(QWidget):
         c.set("outputSuffix", self.output_suffix)
 
     def _default_quality_tier(self) -> QualityTier:
-        ci = self._cfg.get("defaultQualityIndex", 1)
+        ci = self._cfg.get("defaultQualityIndex", 3)
         idx = max(0, min(int(ci), len(QUALITY_TIERS) - 1))
         return QUALITY_TIERS[idx]
 
@@ -407,31 +287,15 @@ class SettingsPanel(QWidget):
                 if isinstance(d, ScaleMode) and d.value == mode:
                     self._scale_combo.setCurrentIndex(i)
                     break
-        if self._quality_slider:
-            self._quality_slider.blockSignals(True)
-            qv = c.get("qualitySliderValue")
-            if qv is not None:
-                self._quality_slider.setValue(int(qv))
+        if self._quality_segment:
+            tier = c.get("qualityTier", 3)
+            if isinstance(tier, int) and 0 <= tier <= 3:
+                self._current_tier_idx = tier
             else:
-                t = self._default_quality_tier()
-                self._quality_slider.setValue(self._tier_to_value(tier_from_dpi_q(t.dpi, t.jpeg)))
-            self._quality_slider.blockSignals(False)
-        if self._dpi_slider:
-            self._dpi_slider.blockSignals(True)
-            dpi = c.get("dpi")
-            if dpi is not None:
-                self._dpi_slider.setValue(int(dpi))
-            else:
-                self._dpi_slider.setValue(self._default_quality_tier().dpi)
-            self._dpi_slider.blockSignals(False)
-        if self._jpeg_slider:
-            self._jpeg_slider.blockSignals(True)
-            jpg = c.get("jpegQuality")
-            if jpg is not None:
-                self._jpeg_slider.setValue(int(jpg))
-            else:
-                self._jpeg_slider.setValue(self._default_quality_tier().jpeg)
-            self._jpeg_slider.blockSignals(False)
+                self._current_tier_idx = 3
+            self._quality_segment.blockSignals(True)
+            self._quality_segment.setCurrentItem(str(self._current_tier_idx))
+            self._quality_segment.blockSignals(False)
         if self._wm_slider:
             val = c.get("maxWmSize", 500)
             self._wm_slider.setValue(int(val))
@@ -443,8 +307,8 @@ class SettingsPanel(QWidget):
                     self._wm_mode_combo.setCurrentIndex(i)
                     break
         if self._output_dir:
-            val = c.get("outputDir", "")
+            val = c.get("outputDir") or c.get("defaultOutputDir", "")
             self._output_dir.setText(val)
         if self._output_suffix:
-            val = c.get("outputSuffix", "_RCSW")
+            val = c.get("outputSuffix") or c.get("defaultOutputSuffix", "_RCSW")
             self._output_suffix.setText(val)
