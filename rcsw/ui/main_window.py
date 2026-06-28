@@ -24,9 +24,7 @@ from .about_panel import AboutPanel
 from ..core.worker import ProcessingWorker
 from ..core.logger import get_logger
 from ..core.config import Config
-from ..core.utils import open_in_system
-
-from pathlib import Path
+from ..core.utils import open_in_system, resource_path
 
 _log = get_logger("main_window")
 
@@ -155,7 +153,7 @@ class MainWindow(FluentWindow):
         self._file_panel.cancel_requested.connect(self._on_cancel)
 
     def _setup_tray(self):
-        icon_path = Path(__file__).resolve().parent.parent / "resources" / "icon.png"
+        icon_path = resource_path("icon.png")
         if not icon_path.exists():
             return
 

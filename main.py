@@ -11,9 +11,20 @@ if __name__ == "__main__":
         from PySide6.QtCore import Qt, QThread, QTimer
         from PySide6.QtWidgets import QApplication, QSystemTrayIcon
         from PySide6.QtGui import QIcon
-        from rcsw.app import create_application
+        from qfluentwidgets import setTheme, Theme
+        from rcsw.core.config import Config
 
-        app = create_application()
+        app = QApplication(sys.argv)
+        if sys.platform == "win32":
+            app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
+
+        cfg = Config.instance()
+        theme_val = cfg.get("theme", Theme.LIGHT.value)
+        try:
+            theme = Theme(theme_val)
+        except (ValueError, TypeError):
+            theme = Theme.LIGHT
+        setTheme(theme)
 
         icon = QIcon()
         pixmap = icon.pixmap(32, 32)

@@ -2,6 +2,7 @@
 set -e
 
 python -m nuitka --mode=app \
+  --output-filename=rcsw \
   --lto=yes \
   --macos-app-icon=rcsw/resources/icon.icns \
   --enable-plugin=pyside6 \

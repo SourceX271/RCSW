@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
@@ -17,6 +15,7 @@ from qfluentwidgets import (
 )
 
 from .. import __version__
+from ..core.utils import resource_path
 from .style import PANEL_BG, TransparentCard
 
 
@@ -55,7 +54,7 @@ class AboutPanel(QWidget):
         icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon_lbl.setFixedSize(64, 64)
         icon_lbl.setScaledContents(True)
-        base = Path(__file__).resolve().parent.parent / "resources"
+        base = resource_path("")
         icon_path = base / "icon.png"
         if not icon_path.exists():
             icon_path = base / "icon.svg"

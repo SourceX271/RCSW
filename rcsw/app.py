@@ -25,6 +25,7 @@ with open(os.devnull, 'w', encoding='utf-8') as devnull:
         from qfluentwidgets import setTheme, Theme
 
 from .core.logger import get_logger, set_console_enabled
+from .core.utils import resource_path
 
 _log = get_logger("app")
 
@@ -37,16 +38,15 @@ sys.excepthook = _exception_hook
 
 
 def _icon_path() -> Path:
-    base = Path(__file__).resolve().parent / "resources"
     if sys.platform == "darwin":
         candidates = ("icon.icns", "icon.png")
     else:
         candidates = ("icon.ico", "icon.png", "icon.svg")
     for name in candidates:
-        p = base / name
+        p = resource_path(name)
         if p.exists():
             return p
-    return base / "icon.png"
+    return resource_path("icon.png")
 
 
 def create_application() -> QApplication:
