@@ -3,6 +3,12 @@ set -e
 
 python -m nuitka --mode=app \
   --output-filename=rcsw \
+  --company-name="SourceX271" \
+  --product-name="RCSW" \
+  --file-version="0.4.0" \
+  --product-version="0.4.0" \
+  --file-description="Remove CamScanner Watermark" \
+  --copyright="GNU General Public License v3.0" \
   --lto=yes \
   --macos-app-icon=rcsw/resources/icon.icns \
   --enable-plugin=pyside6 \

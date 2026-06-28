@@ -1,5 +1,22 @@
+<#
+.SYNOPSIS
+    RCSW Windows 构建脚本
+.DESCRIPTION
+    使用 Nuitka 将 RCSW 打包为独立 Windows 可执行文件。
+    输出: dist/rcsw.exe
+.NOTES
+    作者: SourceX271
+    项目: https://github.com/SourceX271/RCSW
+    许可证: GNU General Public License v3.0
+#>
 uv run python -m nuitka --standalone --windows-console-mode=disable `
   --output-filename=rcsw.exe `
+  --company-name="SourceX271" `
+  --product-name="RCSW" `
+  --file-version="0.4.0" `
+  --product-version="0.4.0" `
+  --file-description="Remove CamScanner Watermark" `
+  --copyright="GNU General Public License v3.0" `
   --lto=yes `
   --enable-plugin=pyside6 `
   --include-package=rcsw `
