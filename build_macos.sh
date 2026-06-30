@@ -13,7 +13,7 @@ python -m nuitka --mode=app \
   --macos-app-icon=rcsw/resources/icon.icns \
   --enable-plugin=pyside6 \
   --include-package=rcsw \
-  --include-package-data=rcsw \
+  --include-data-dir=rcsw/resources=rcsw/resources \
   --output-dir=dist \
   --noinclude-default-mode=nofollow \
   --noinclude-unittest-mode=nofollow \

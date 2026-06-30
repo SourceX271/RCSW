@@ -19,7 +19,7 @@ uv run python -m nuitka --standalone --windows-console-mode=disable `
   --copyright="GNU General Public License v3.0" `
   --enable-plugin=pyside6 `
   --include-package=rcsw `
-  --include-package-data=rcsw `
+  --include-data-dir=rcsw/resources=rcsw/resources `
   --output-dir=dist `
   --windows-icon-from-ico=rcsw/resources/icon.ico `
   --noinclude-default-mode=nofollow `
