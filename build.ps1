@@ -20,9 +20,13 @@ uv run python -m nuitka --standalone --windows-console-mode=disable `
   --enable-plugin=pyside6 `
   --include-package=rcsw `
 <<<<<<< HEAD
+<<<<<<< HEAD
   --include-data-files=rcsw/resources/icon.png=rcsw/resources/icon.png `
   --include-data-files=rcsw/resources/icon.ico=rcsw/resources/icon.ico `
   --include-data-files=rcsw/resources/icon.svg=rcsw/resources/icon.svg `
+=======
+  --include-package-data=rcsw `
+>>>>>>> parent of d55fa4b (优化打包脚本)
 =======
   --include-package-data=rcsw `
 >>>>>>> parent of d55fa4b (优化打包脚本)
