@@ -16,7 +16,8 @@ python -m nuitka --standalone \
   --lto=yes \
   --enable-plugin=pyside6 \
   --include-package=rcsw \
-  --include-data-dir=rcsw/resources=rcsw/resources \
+  --include-data-files=rcsw/resources/icon.png=rcsw/resources/icon.png \
+  --include-data-files=rcsw/resources/icon.svg=rcsw/resources/icon.svg \
   --output-dir=dist \
   --noinclude-default-mode=nofollow \
   --noinclude-unittest-mode=nofollow \
