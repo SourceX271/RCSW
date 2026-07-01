@@ -6,7 +6,7 @@ set -e
 # 输出: dist/rcsw
 
 python -m nuitka --standalone \
-  --output-filename=rcsw \
+  --output-filename=RCSW \
   --company-name="SourceX271" \
   --product-name="RCSW" \
   --file-version="0.4.0" \
@@ -16,8 +16,7 @@ python -m nuitka --standalone \
   --lto=yes \
   --enable-plugin=pyside6 \
   --include-package=rcsw \
-  --include-data-files=rcsw/resources/icon.png=rcsw/resources/icon.png \
-  --include-data-files=rcsw/resources/icon.svg=rcsw/resources/icon.svg \
+  --include-package-data=rcsw \
   --output-dir=dist \
   --noinclude-default-mode=nofollow \
   --noinclude-unittest-mode=nofollow \
