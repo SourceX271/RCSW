@@ -2,7 +2,7 @@
 set -e
 
 python -m nuitka --mode=app \
-  --output-filename=rcsw \
+  --output-filename=RCSW \
   --company-name="SourceX271" \
   --product-name="RCSW" \
   --file-version="0.4.0" \
