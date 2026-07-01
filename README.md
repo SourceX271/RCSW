@@ -31,7 +31,7 @@ RCSW 是一款专门用于去除「扫描全能王」（CamScanner）生成 PDF 
 
 ### 依赖树状图
 ```
-rcsw v0.3.0
+rcsw
 ├── nuitka v4.1.3
 ├── pillow v12.2.0
 ├── pymupdf v1.27.2.3

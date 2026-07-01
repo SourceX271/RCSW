@@ -10,7 +10,7 @@
     许可证: GNU General Public License v3.0
 #>
 uv run python -m nuitka --standalone --windows-console-mode=disable `
-  --output-filename=rcsw.exe `
+  --output-filename=RCSW.exe `
   --company-name="SourceX271" `
   --product-name="RCSW" `
   --file-version="0.4.0" `
@@ -19,7 +19,12 @@ uv run python -m nuitka --standalone --windows-console-mode=disable `
   --copyright="GNU General Public License v3.0" `
   --enable-plugin=pyside6 `
   --include-package=rcsw `
+<<<<<<< HEAD
   --include-package-data=rcsw `
+=======
+  --include-package-data=rcsw/resources `
+  --include-package-data=rcsw/resources `
+>>>>>>> b3b8f020a3d62cb66ca078087a34197223c930cc
   --output-dir=dist `
   --windows-icon-from-ico=rcsw/resources/icon.ico `
   --noinclude-default-mode=nofollow `

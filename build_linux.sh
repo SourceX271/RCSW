@@ -1,7 +1,11 @@
 #!/bin/bash
 set -e
 
-python -m nuitka --mode=app \
+# RCSW Linux 构建脚本
+# 使用 Nuitka 打包为独立 Linux 可执行文件
+# 输出: dist/rcsw
+
+python -m nuitka --standalone \
   --output-filename=RCSW \
   --company-name="SourceX271" \
   --product-name="RCSW" \
@@ -10,7 +14,6 @@ python -m nuitka --mode=app \
   --file-description="Remove CamScanner Watermark" \
   --copyright="GNU General Public License v3.0" \
   --lto=yes \
-  --macos-app-icon=rcsw/resources/icon.icns \
   --enable-plugin=pyside6 \
   --include-package=rcsw \
   --include-package-data=rcsw \
